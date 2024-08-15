@@ -11,25 +11,40 @@ import time
 import scipy.stats as sps
 from scipy.stats import gaussian_kde
 import pandas as pd
+import cProfile, pstats, io
+from pstats import SortKey
 
 
 
 
 # %%
 # generaal MCMC sampling function given target, method , adapted, scale, ns, nb, x and seed 
-def MCMC_sampling(target, method,adapted , scale, Ns ,Nb, x0, seed):
-  np.random.seed(seed)
-  if method == MH:
-    sampler = method(target=target, scale=scale,x0=x0)
-    if adapted:
-       return sampler.sample_adapt(Ns, Nb)
-    return sampler.sample(Ns, Nb)
-  else: 
-    if method == NUTS: 
-      sampler = method(target, x0)
-      return sampler.sample(Ns,Nb)
-    sampler = method(target, scale, x0)
-    return sampler.sample(Ns,Nb)
+def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0, seed):
+    pr = cProfile.Profile()
+    pr.enable()
+    np.random.seed(seed)
+    if method == MH:
+        sampler = method(target=target, scale=scale, x0=x0)
+        if adapted:
+            x = sampler.sample_adapt(Ns, Nb)
+        else:
+            x = sampler.sample(Ns, Nb)
+    elif method == NUTS:
+        sampler = method(target, x0)
+        x = sampler.sample(Ns, Nb)
+    else:
+        sampler = method(target, scale, x0)
+        x = sampler.sample(Ns, Nb)
+    pr.disable()
+    s = io.StringIO()
+    sortby = SortKey.PCALLS
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    lines = s.getvalue().split('\n')
+    idx = ['distribution\_custom.py:227(_donut_logpdf_func)' in line for line in lines].index(True)
+
+    
+    return x, lines[idx].split()[0]
 
 # %%
 def precompute_samples(target, scale, Ns, Nb, x0, seed):
@@ -42,13 +57,14 @@ def precompute_samples(target, scale, Ns, Nb, x0, seed):
         Nb = np.full(5, Nb)
     
     samples = {}
-    samples['MH_fixed'] = MCMC_sampling(target=target, method=MH, adapted=False, scale=scale[0], Ns=Ns[0], Nb=Nb[0], x0=x0, seed=seed)
-    samples['MH_adapted'] = MCMC_sampling(target=target, method=MH, adapted=True, scale=scale[1], Ns=Ns[1], Nb=Nb[1], x0=x0, seed=seed)
-    samples['ULA'] = MCMC_sampling(target=target, method=ULA, adapted=False, scale=scale[2], Ns=Ns[2], Nb=Nb[2], x0=x0, seed=seed)
-    samples['MALA'] = MCMC_sampling(target=target, method=MALA, adapted=False, scale=scale[3], Ns=Ns[3], Nb=Nb[3], x0=x0, seed=seed)
-    samples['NUTS'] = MCMC_sampling(target=target, method=NUTS, adapted=False, scale=scale[4], Ns=Ns[4], Nb=Nb[4], x0=x0, seed=seed)
+    pr = {}
+    samples['MH_fixed'], pr['MH_fixed']= MCMC_sampling(target=target, method=MH, adapted=False, scale=scale[0], Ns=Ns[0], Nb=Nb[0], x0=x0, seed=seed)
+    samples['MH_adapted'], pr['MH_adapted'] = MCMC_sampling(target=target, method=MH, adapted=True, scale=scale[1], Ns=Ns[1], Nb=Nb[1], x0=x0, seed=seed)
+    samples['ULA'], pr['ULA'] = MCMC_sampling(target=target, method=ULA, adapted=False, scale=scale[2], Ns=Ns[2], Nb=Nb[2], x0=x0, seed=seed)
+    samples['MALA'], pr['MALA'] = MCMC_sampling(target=target, method=MALA, adapted=False, scale=scale[3], Ns=Ns[3], Nb=Nb[3], x0=x0, seed=seed)
+    samples['NUTS'], pr['NUTS'] = MCMC_sampling(target=target, method=NUTS, adapted=False, scale=scale[4], Ns=Ns[4], Nb=Nb[4], x0=x0, seed=seed)
 
-    return samples, scale, Ns, Nb
+    return samples, pr, scale, Ns, Nb
 #rounds the array element at index by 3 decimals 
 def safe_access(array, index):
     return round(array[index], 3) 
@@ -66,6 +82,27 @@ def compute_ESS(samples):
     
     ess[4] = samples['NUTS'].compute_ess()
     return ess
+# %%
+def compute_LOGPDF(pr):
+    logpdf = np.zeros(5)
+    for i in range(4):
+
+        s = io.StringIO()
+        sortby = SortKey.PCALLS
+        ps = pstats.Stats(pr[i], stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print(s.getvalue())
+        search_string = 'distribution\_custom.py:227(_donut_logpdf_func)'  # Adjust this based on the actual output
+
+        # Check if the string is in the output and extract it if found
+        lines = s.getvalue().split('\n')
+
+        if any(search_string in line for line in lines):
+            idx = [search_string in line for line in lines].index(True)
+
+            logpdf[i] = (lines[idx].split()[0])
+        
+    return logpdf
 
 
 # %%
@@ -76,8 +113,9 @@ def create_table(target,scale,Ns,Nb,x0,seed):
     
     
     # compute ess 
-    samples, scale, Ns, Nb  = precompute_samples(target,scale,Ns,Nb,x0,seed)
+    samples, logpf, scale, Ns, Nb  = precompute_samples(target,scale,Ns,Nb,x0,seed)
     ess = compute_ESS(samples)
+    
 
     
 
@@ -87,7 +125,8 @@ def create_table(target,scale,Ns,Nb,x0,seed):
         "No. of Burn-ins": [Nb[0], Nb[1], Nb[2], Nb[3], Nb[4]],
         "Scaling Factor": [scale[0], scale[1], scale[2], scale[3], scale[4]],
         "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
-        "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)]
+        "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)], 
+        "LogPDF": [logpf[0], logpf[1], logpf[2], logpf[3], logpf[4]]
     })
 
     # Optional: Replace None values with "-"
