@@ -86,6 +86,7 @@ def compute_ESS(samples):
     ess[4] = samples['NUTS'].compute_ess()
     return ess
 # %%
+
 def count_function(pr,string):
     counter = np.zeros(5)
     for i in range(4):
@@ -105,6 +106,38 @@ def count_function(pr,string):
         
     return counter
 
+# def compute_Rhat(samples):
+
+
+def compute_AR(samples):
+    ar= np.zeros((5, 2))  # Initialize the array for ESS values
+    
+    # Extract the ESS from the precomputed samples
+    ar[0] = samples['MH_fixed'].acc_rate
+    ar[1] = samples['MH_adapted'].acc_rate
+    ar[2] = samples['ULA'].acc_rate
+    ar[3] = samples['MALA'].acc_rate
+    ar[4] = samples['NUTS'].acc_rate
+    return ar
+
+
+
+# def compute_Rhat(samples):
+
+
+def compute_AR(samples):
+    ar= np.zeros((5, 2))  # Initialize the array for ESS values
+    
+    # Extract the ESS from the precomputed samples
+    ar[0] = samples['MH_fixed'].acc_rate
+    ar[1] = samples['MH_adapted'].acc_rate
+    ar[2] = samples['ULA'].acc_rate
+    ar[3] = samples['MALA'].acc_rate
+    ar[4] = samples['NUTS'].acc_rate
+    return ar
+
+
+
 
 # %%
 
@@ -116,25 +149,27 @@ def create_table(target,scale,Ns,Nb,x0,seed):
     # compute ess 
     samples, logpdf, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
     ess = compute_ESS(samples)
-    
+    # ar = compute_AR(samples)
 
-    
 
-    ess_df = pd.DataFrame({
+
+
+    df = pd.DataFrame({
         "Sampling Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
         "No. of Samples": [Ns[0], Ns[1], Ns[2], Ns[3], Ns[4]],
         "No. of Burn-ins": [Nb[0], Nb[1], Nb[2], Nb[3], Nb[4]],
         "Scaling Factor": [scale[0], scale[1], scale[2], scale[3], scale[4]],
         "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
-        "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)], 
+        "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)],
+        # "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
         "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]]
     })
 
     # Optional: Replace None values with "-"
-    ess_df = ess_df.fillna("-")
+    df = df.fillna("-")
 
     # Display the DataFrame without the index
-    return ess_df
+    return df
 
   
 
