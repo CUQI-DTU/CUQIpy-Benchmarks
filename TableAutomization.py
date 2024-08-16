@@ -66,6 +66,7 @@ def precompute_samples(target, scale, Ns, Nb, x0, seed):
     samples['NUTS'], pr['NUTS'] = MCMC_sampling(target=target, method=NUTS, adapted=False, scale=scale[4], Ns=Ns[4], Nb=Nb[4], x0=x0, seed=seed)
 
     logpdf = count_function(pr,"logpdf")
+    
 
     return samples,logpdf,scale,Ns,Nb
 
@@ -73,18 +74,6 @@ def precompute_samples(target, scale, Ns, Nb, x0, seed):
 def safe_access(array, index):
     return round(array[index], 3) 
 
-#%%
-## compute ess for all sampling methods 
-def compute_ESS(samples):
-    ess = np.zeros((5, 2))  # Initialize the array for ESS values
-    
-    # Extract the ESS from the precomputed samples
-    ess[0] = samples['MH_fixed'].compute_ess()
-    ess[1] = samples['MH_adapted'].compute_ess()
-    ess[2] = samples['ULA'].compute_ess()
-    ess[3] = samples['MALA'].compute_ess()
-    ess[4] = samples['NUTS'].compute_ess()
-    return ess
 # %%
 
 def count_function(pr,string):
@@ -106,9 +95,21 @@ def count_function(pr,string):
         
     return counter
 
+#%%
+## compute ess for all sampling methods 
+def compute_ESS(samples):
+    ess = np.zeros((5, 2))  # Initialize the array for ESS values
+    
+    # Extract the ESS from the precomputed samples
+    ess[0] = samples['MH_fixed'].compute_ess()
+    ess[1] = samples['MH_adapted'].compute_ess()
+    ess[2] = samples['ULA'].compute_ess()
+    ess[3] = samples['MALA'].compute_ess()
+    ess[4] = samples['NUTS'].compute_ess()
+    return ess
+
+
 # def compute_Rhat(samples):
-
-
 def compute_AR(samples):
     ar= np.zeros((5, 2))  # Initialize the array for ESS values
     
@@ -117,24 +118,10 @@ def compute_AR(samples):
     ar[1] = samples['MH_adapted'].acc_rate
     ar[2] = samples['ULA'].acc_rate
     ar[3] = samples['MALA'].acc_rate
-    ar[4] = samples['NUTS'].acc_rate
+    ar[4] = (len(np.unique(samples['NUTS'].samples[0])))/ (len(samples['NUTS'].samples[0]))
     return ar
 
 
-
-# def compute_Rhat(samples):
-
-
-def compute_AR(samples):
-    ar= np.zeros((5, 2))  # Initialize the array for ESS values
-    
-    # Extract the ESS from the precomputed samples
-    ar[0] = samples['MH_fixed'].acc_rate
-    ar[1] = samples['MH_adapted'].acc_rate
-    ar[2] = samples['ULA'].acc_rate
-    ar[3] = samples['MALA'].acc_rate
-    ar[4] = samples['NUTS'].acc_rate
-    return ar
 
 
 
@@ -149,7 +136,7 @@ def create_table(target,scale,Ns,Nb,x0,seed):
     # compute ess 
     samples, logpdf, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
     ess = compute_ESS(samples)
-    # ar = compute_AR(samples)
+    ar = compute_AR(samples)
 
 
 
@@ -161,7 +148,7 @@ def create_table(target,scale,Ns,Nb,x0,seed):
         "Scaling Factor": [scale[0], scale[1], scale[2], scale[3], scale[4]],
         "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
         "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)],
-        # "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
+        "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
         "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]]
     })
 
