@@ -65,10 +65,10 @@ def precompute_samples(target, scale, Ns, Nb, x0, seed):
     samples['MALA'], pr['MALA'] = MCMC_sampling(target=target, method=MALA, adapted=False, scale=scale[3], Ns=Ns[3], Nb=Nb[3], x0=x0, seed=seed)
     samples['NUTS'], pr['NUTS'] = MCMC_sampling(target=target, method=NUTS, adapted=False, scale=scale[4], Ns=Ns[4], Nb=Nb[4], x0=x0, seed=seed)
 
-    logpdf = count_function(pr,"logpdf")
+    #logpdf = count_function(pr,"logpdf")
     
 
-    return samples,logpdf,scale,Ns,Nb
+    return samples,pr,scale,Ns,Nb
 
 #rounds the array element at index by 3 decimals 
 def safe_access(array, index):
@@ -78,7 +78,7 @@ def safe_access(array, index):
 
 def count_function(pr,string):
     counter = np.zeros(5)
-    for i in range(4):
+    for i in range(5):
         s = io.StringIO()
         sortby = SortKey.PCALLS
         ps = pstats.Stats(list(pr.values())[i], stream=s).sort_stats(sortby)
@@ -146,9 +146,10 @@ def create_table(target,scale,Ns,Nb,x0,seed):
     
     
     # compute ess 
-    samples, logpdf, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
+    samples, pr, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
     ess = compute_ESS(samples)
     ar = compute_AR(samples)
+    logpdf = count_function(pr,"logpdf")
 
 
 
