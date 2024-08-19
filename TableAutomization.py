@@ -78,7 +78,7 @@ def safe_access(array, index):
 
 def count_function(pr,string):
     counter = np.zeros(5)
-    for i in range(4):
+    for i in range(5):
         s = io.StringIO()
         sortby = SortKey.PCALLS
         ps = pstats.Stats(list(pr.values())[i], stream=s).sort_stats(sortby)
