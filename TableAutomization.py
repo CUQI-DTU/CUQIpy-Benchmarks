@@ -21,6 +21,9 @@ from pstats import SortKey
 # generaal MCMC sampling function given target, method , adapted, scale, ns, nb, x and seed 
 # return samples and the number of logpdf in the simulation
 def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0, seed):
+    if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+        x0 = x0.sample().to_numpy()
+
     pr = cProfile.Profile()
     pr.enable()
     np.random.seed(seed)
@@ -122,15 +125,15 @@ def compute_AR(samples):
     return ar
 
 # def compute_Rhat(data):
-def compute_Rhat(data):
+def compute_Rhat(samples,data):
     rhat= np.zeros((5, 2))  # Initialize the array for ESS values
     
     # Extract the Rhat from the precomputed samples
-    rhat[0] = data['MH_fixed'].compute_rhat()
-    rhat[1] = data['MH_adapted'].compute_rhat()
-    rhat[2] = data['ULA'].compute_rhat()
-    rhat[3] = data['MALA'].compute_rhat()
-    rhat[4] = data['NUTS'].compute_rhat()
+    rhat[0] = samples['MH_fixed'].compute_rhat([[item["MH_fixed"]] for item in data])
+    rhat[1] = samples['MH_adapted'].compute_rhat([[item["MH_adapted"]] for item in data])
+    rhat[2] = samples['ULA'].compute_rhat([[item["ULA"]] for item in data])
+    rhat[3] = samples['MALA'].compute_rhat([[item["MALA"]] for item in data])
+    rhat[4] = samples['NUTS'].compute_rhat([[item["NUTS"]] for item in data])
     return rhat
 
 
@@ -141,7 +144,7 @@ def compute_Rhat(data):
 # %%
 
 #main function- creates a table given a posterior distribution, with the ess values 
-def create_table(target,scale,Ns,Nb,x0,seed):
+def create_table(target,scale,Ns,Nb,x0,seed,chains=1):
     #in case scale, nb or ns are scalars 
     
     
@@ -151,7 +154,12 @@ def create_table(target,scale,Ns,Nb,x0,seed):
     ar = compute_AR(samples)
     logpdf = count_function(pr,"logpdf")
     gradient = count_function(pr,"_gradient")
-
+    if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+        data = []
+        for i in range(chains-1):
+            data.append(precompute_samples(target,scale,Ns,Nb,x0,seed)[0])
+        rhat = compute_Rhat(samples,data)
+        print(rhat)
 
 
 
