@@ -109,17 +109,29 @@ def compute_ESS(samples):
     return ess
 
 
-# def compute_Rhat(samples):
+# def compute_AR(samples):
 def compute_AR(samples):
     ar= np.zeros((5, 2))  # Initialize the array for ESS values
     
-    # Extract the ESS from the precomputed samples
+    # Extract the AR from the precomputed samples
     ar[0] = samples['MH_fixed'].acc_rate
     ar[1] = samples['MH_adapted'].acc_rate
     ar[2] = samples['ULA'].acc_rate
     ar[3] = samples['MALA'].acc_rate
     ar[4] = (len(np.unique(samples['NUTS'].samples[0])))/ (len(samples['NUTS'].samples[0]))
     return ar
+
+# def compute_Rhat(data):
+def compute_Rhat(data):
+    rhat= np.zeros((5, 2))  # Initialize the array for ESS values
+    
+    # Extract the Rhat from the precomputed samples
+    rhat[0] = data['MH_fixed'].compute_rhat()
+    rhat[1] = data['MH_adapted'].compute_rhat()
+    rhat[2] = data['ULA'].compute_rhat()
+    rhat[3] = data['MALA'].compute_rhat()
+    rhat[4] = data['NUTS'].compute_rhat()
+    return rhat
 
 
 
