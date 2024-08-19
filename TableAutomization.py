@@ -128,12 +128,13 @@ def compute_AR(samples):
 def compute_Rhat(samples,data):
     rhat= np.zeros((5, 2))  # Initialize the array for ESS values
     
+    print()
     # Extract the Rhat from the precomputed samples
-    rhat[0] = samples['MH_fixed'].compute_rhat([[item["MH_fixed"]] for item in data])
-    rhat[1] = samples['MH_adapted'].compute_rhat([[item["MH_adapted"]] for item in data])
-    rhat[2] = samples['ULA'].compute_rhat([[item["ULA"]] for item in data])
-    rhat[3] = samples['MALA'].compute_rhat([[item["MALA"]] for item in data])
-    rhat[4] = samples['NUTS'].compute_rhat([[item["NUTS"]] for item in data])
+    rhat[0] = samples['MH_fixed'].compute_rhat([item["MH_fixed"] for item in data])
+    rhat[1] = samples['MH_adapted'].compute_rhat([item["MH_adapted"] for item in data])
+    rhat[2] = samples['ULA'].compute_rhat([item["ULA"] for item in data])
+    rhat[3] = samples['MALA'].compute_rhat([item["MALA"] for item in data])
+    rhat[4] = samples['NUTS'].compute_rhat([item["NUTS"] for item in data])
     return rhat
 
 
