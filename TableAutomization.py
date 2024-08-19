@@ -65,10 +65,10 @@ def precompute_samples(target, scale, Ns, Nb, x0, seed):
     samples['MALA'], pr['MALA'] = MCMC_sampling(target=target, method=MALA, adapted=False, scale=scale[3], Ns=Ns[3], Nb=Nb[3], x0=x0, seed=seed)
     samples['NUTS'], pr['NUTS'] = MCMC_sampling(target=target, method=NUTS, adapted=False, scale=scale[4], Ns=Ns[4], Nb=Nb[4], x0=x0, seed=seed)
 
-    logpdf = count_function(pr,"logpdf")
+    #logpdf = count_function(pr,"logpdf")
     
 
-    return samples,logpdf,scale,Ns,Nb
+    return samples,pr,scale,Ns,Nb
 
 #rounds the array element at index by 3 decimals 
 def safe_access(array, index):
@@ -134,9 +134,11 @@ def create_table(target,scale,Ns,Nb,x0,seed):
     
     
     # compute ess 
-    samples, logpdf, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
+    samples, pr, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
     ess = compute_ESS(samples)
     ar = compute_AR(samples)
+    logpdf = count_function(pr,"logpdf")
+    gradient = count_function(pr,"_gradient")
 
 
 
@@ -149,7 +151,8 @@ def create_table(target,scale,Ns,Nb,x0,seed):
         "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
         "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)],
         "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
-        "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]]
+        "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]],
+        "Gradient": [gradient[0], gradient[1], gradient[2], gradient[3], gradient[4]]
     })
 
     # Optional: Replace None values with "-"
