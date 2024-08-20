@@ -1,5 +1,5 @@
 # %%
-import SampleComputation as SC
+from SampleComputation import SampleComputation as SC
 
 # %%
 
