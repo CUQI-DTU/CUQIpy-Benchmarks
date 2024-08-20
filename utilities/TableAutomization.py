@@ -199,7 +199,7 @@ def create_comparison(target,scale,Ns,Nb,x0,seed,chains):
     return df, plot 
 
 #%%
-def create_table(target,scale,Ns,Nb,x0,seed):
+def create_table(target,scale,Ns,Nb,x0,seed, chains):
     #in case scale, nb or ns are scalars 
     
     
