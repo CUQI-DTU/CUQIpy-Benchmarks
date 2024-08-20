@@ -14,7 +14,8 @@ import pandas as pd
 import cProfile, pstats, io
 from pstats import SortKey
 from prettytable import PrettyTable
-
+import matplotlib.pyplot as plt
+from IPython.display import Image, display
 
 
 
@@ -264,6 +265,7 @@ def print_table(df):
 #%%
 def show_plot(fig):
     fig.savefig("output_plot.png")
+    display(Image(filename="output_plot.png"))
 
   
 
