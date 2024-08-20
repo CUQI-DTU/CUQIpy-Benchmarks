@@ -146,7 +146,7 @@ def compute_Rhat(samples,data):
 # %%
 
 #main function- creates a table given a posterior distribution, with the ess values 
-def create_comparison(target,scale,Ns,Nb,x0,seed):
+def create_comparison(target,scale,Ns,Nb,x0,seed,chains):
     #in case scale, nb or ns are scalars 
     
     
@@ -161,17 +161,35 @@ def create_comparison(target,scale,Ns,Nb,x0,seed):
 
 
 
-    df = pd.DataFrame({
+     # Initialize the DataFrame dictionary
+    df_dict = {
         "Sampling Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
         "No. of Samples": [Ns[0], Ns[1], Ns[2], Ns[3], Ns[4]],
         "No. of Burn-ins": [Nb[0], Nb[1], Nb[2], Nb[3], Nb[4]],
         "Scaling Factor": [scale[0], scale[1], scale[2], scale[3], scale[4]],
-        "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
+        "ESS (v0)": [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
         "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)],
-        "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
-        "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]],
-        "Gradient": [gradient[0], gradient[1], gradient[2], gradient[3], gradient[4]]
-    })
+        "AR": [safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
+    }
+
+    # Check if x0 is a CUQI distribution object
+    if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+        # Initialize data for Rhat calculation
+        data = []
+        for i in range(chains - 1):
+            data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
+        rhat = compute_Rhat(samples, data)
+
+        # Add Rhat values to the DataFrame dictionary
+        df_dict["Rhat (v0)"] = [safe_access(rhat[0], 0), safe_access(rhat[1], 0), safe_access(rhat[2], 0), safe_access(rhat[3], 0), safe_access(rhat[4], 0)]
+        df_dict["Rhat (v1)"] = [safe_access(rhat[0], 1), safe_access(rhat[1], 1), safe_access(rhat[2], 1), safe_access(rhat[3], 1), safe_access(rhat[4], 1)]
+
+    # Continue adding other columns
+    df_dict["LogPDF"] = [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]]
+    df_dict["Gradient"] = [gradient[0], gradient[1], gradient[2], gradient[3], gradient[4]]
+
+    # Create the DataFrame
+    df = pd.DataFrame(df_dict)
 
     # Optional: Replace None values with "-"
     df = df.fillna("-")
