@@ -163,6 +163,40 @@ def create_comparison(target,scale,Ns,Nb,x0,seed):
     # Display the DataFrame without the index
     return df, plot 
 
+#%%
+def create_table(target,scale,Ns,Nb,x0,seed):
+    #in case scale, nb or ns are scalars 
+    
+    
+    # compute ess 
+    samples, pr, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
+    ess = compute_ESS(samples)
+    ar = compute_AR(samples)
+    logpdf = count_function(pr,"logpdf")
+    gradient = count_function(pr,"_gradient")
+    
+
+
+
+
+    df = pd.DataFrame({
+        "Sampling Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
+        "No. of Samples": [Ns[0], Ns[1], Ns[2], Ns[3], Ns[4]],
+        "No. of Burn-ins": [Nb[0], Nb[1], Nb[2], Nb[3], Nb[4]],
+        "Scaling Factor": [scale[0], scale[1], scale[2], scale[3], scale[4]],
+        "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
+        "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)],
+        "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
+        "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]],
+        "Gradient": [gradient[0], gradient[1], gradient[2], gradient[3], gradient[4]]
+    })
+
+    # Optional: Replace None values with "-"
+    df = df.fillna("-")
+
+    # Display the DataFrame without the index
+    return df 
+
     #%%
 def print_table(df):
     df['LogPDF'] = df['LogPDF'].apply(lambda x: int(x) if pd.notnull(x) else '-')
