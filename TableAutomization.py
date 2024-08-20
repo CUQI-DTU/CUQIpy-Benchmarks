@@ -13,6 +13,7 @@ from scipy.stats import gaussian_kde
 import pandas as pd
 import cProfile, pstats, io
 from pstats import SortKey
+from prettytable import PrettyTable
 
 
 
@@ -145,7 +146,7 @@ def compute_Rhat(samples,data):
 # %%
 
 #main function- creates a table given a posterior distribution, with the ess values 
-def create_table(target,scale,Ns,Nb,x0,seed,chains=1):
+def create_comparison(target,scale,Ns,Nb,x0,seed):
     #in case scale, nb or ns are scalars 
     
     
@@ -155,6 +156,41 @@ def create_table(target,scale,Ns,Nb,x0,seed,chains=1):
     ar = compute_AR(samples)
     logpdf = count_function(pr,"logpdf")
     gradient = count_function(pr,"_gradient")
+    plot = plot_sampling(samples, target)
+
+
+
+
+    df = pd.DataFrame({
+        "Sampling Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
+        "No. of Samples": [Ns[0], Ns[1], Ns[2], Ns[3], Ns[4]],
+        "No. of Burn-ins": [Nb[0], Nb[1], Nb[2], Nb[3], Nb[4]],
+        "Scaling Factor": [scale[0], scale[1], scale[2], scale[3], scale[4]],
+        "ESS (v0)":  [safe_access(ess[0], 0), safe_access(ess[1], 0), safe_access(ess[2], 0), safe_access(ess[3], 0), safe_access(ess[4], 0)],
+        "ESS (v1)": [safe_access(ess[0], 1), safe_access(ess[1], 1), safe_access(ess[2], 1), safe_access(ess[3], 1), safe_access(ess[4], 1)],
+        "AR":[safe_access(ar[0], 1), safe_access(ar[1], 1), safe_access(ar[2], 1), safe_access(ar[3], 1), safe_access(ar[4], 1)],
+        "LogPDF": [logpdf[0], logpdf[1], logpdf[2], logpdf[3], logpdf[4]],
+        "Gradient": [gradient[0], gradient[1], gradient[2], gradient[3], gradient[4]]
+    })
+
+    # Optional: Replace None values with "-"
+    df = df.fillna("-")
+
+    # Display the DataFrame without the index
+    return df, plot 
+
+#%%
+def create_table(target,scale,Ns,Nb,x0,seed):
+    #in case scale, nb or ns are scalars 
+    
+    
+    # compute ess 
+    samples, pr, scale, Ns, Nb = precompute_samples(target,scale,Ns,Nb,x0,seed)
+    ess = compute_ESS(samples)
+    ar = compute_AR(samples)
+    logpdf = count_function(pr,"logpdf")
+    gradient = count_function(pr,"_gradient")
+
      # Initialize the DataFrame dictionary
     df_dict = {
         "Sampling Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
@@ -189,7 +225,27 @@ def create_table(target,scale,Ns,Nb,x0,seed,chains=1):
     df = df.fillna("-")
 
     # Display the DataFrame without the index
-    return df
+    return df 
+
+    #%%
+def print_table(df):
+    df['LogPDF'] = df['LogPDF'].apply(lambda x: int(x) if pd.notnull(x) else '-')
+    df['Gradient'] = df['Gradient'].apply(lambda x: int(x) if pd.notnull(x) else '-')
+
+    # Create a PrettyTable object
+    table = PrettyTable()
+
+    # Add columns to the table
+    table.field_names = df.columns.tolist()
+    for row in df.itertuples(index=False):
+        table.add_row(row)
+
+    # Print the table
+    print(table)
+
+#%%
+def show_plot(fig):
+    fig.savefig("output_plot.png")
 
   
 
@@ -228,20 +284,14 @@ def plot_pdf_1D(distb, min, max, **kwargs):
 
 #%%
 # function that given a target and  scale, Ns, Nb, x0, seed shows the plot distribution 
-def plot_sampling(target, scale, Ns, Nb, x0, seed):
-    if isinstance(scale, float):
-        scale = np.full(5, scale)
-    if isinstance(Ns, int):
-        Ns = np.full(5, Ns)
-    if isinstance(Nb, int):
-        Nb = np.full(5, Nb)
+def plot_sampling(samples, target):
 
     # Perform MCMC sampling
-    MH_fixed_samples = MCMC_sampling(target=target, method=MH, adapted=False, scale=scale[0], Ns=Ns[0], Nb=Nb[0], x0=x0, seed=seed)
-    MH_adapted_samples = MCMC_sampling(target=target, method=MH, adapted=False, scale=scale[1], Ns=Ns[1], Nb=Nb[1], x0=x0, seed=seed)
-    ULA_samples = MCMC_sampling(target=target, method=ULA, adapted=False, scale=scale[2], Ns=Ns[2], Nb=Nb[2], x0=x0, seed=seed)
-    MALA_samples = MCMC_sampling(target=target, method=MALA, adapted=False, scale=scale[3], Ns=Ns[3], Nb=Nb[3], x0=x0, seed=seed)
-    NUTS_samples = MCMC_sampling(target=target, method=NUTS, adapted=False, scale=scale[4], Ns=Ns[4], Nb=Nb[4], x0=x0, seed=seed)
+    MH_fixed_samples = samples['MH_fixed']
+    MH_adapted_samples = samples['MH_adapted']
+    ULA_samples = samples['ULA']
+    MALA_samples =samples['MALA']
+    NUTS_samples = samples['NUTS']
 
     # Create a figure with a 2x3 grid of subplots (2 rows, 3 columns)
     fig, axs = plt.subplots(2, 3, figsize=(18, 12))  # Adjust the figure size as needed
@@ -277,9 +327,9 @@ def plot_sampling(target, scale, Ns, Nb, x0, seed):
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
+    plt.close(fig)
 
-    # Show the plots
-    plt.show()
+    return fig,  axs
 
 
 # %%
