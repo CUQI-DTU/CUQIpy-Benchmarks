@@ -40,6 +40,4 @@ CUQIpy-Benchmarks/
 
 The `benchmarks/` directory contains the scripts and notebooks for various benchmarks, while the `utilities/` directory contains helper module `TableAutomization.py` that are used in the benchmark analysis.
 
-Contributions are welcome! If you have ideas for new benchmarks, improvements, or bug fixes, please feel free to submit a pull request. To contribute, fork the repository, create a new branch for your feature or bugfix, commit your changes, push your branch to GitHub, and submit a pull request with a description of your changes.
 
-This project is licensed under the MIT License - see the `LICENSE` file for details.
