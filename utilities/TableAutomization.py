@@ -14,7 +14,8 @@ import pandas as pd
 import cProfile, pstats, io
 from pstats import SortKey
 from prettytable import PrettyTable
-
+import matplotlib.pyplot as plt
+from IPython.display import Image, display
 
 
 
@@ -198,7 +199,7 @@ def create_comparison(target,scale,Ns,Nb,x0,seed,chains):
     return df, plot 
 
 #%%
-def create_table(target,scale,Ns,Nb,x0,seed):
+def create_table(target,scale,Ns,Nb,x0,seed, chains):
     #in case scale, nb or ns are scalars 
     
     
@@ -264,6 +265,7 @@ def print_table(df):
 #%%
 def show_plot(fig):
     fig.savefig("output_plot.png")
+    display(Image(filename="output_plot.png"))
 
   
 
