@@ -15,13 +15,7 @@ git clone https://github.com/CUQI-DTU/CUQIpy-Benchmarks.git
 cd CUQIpy-Benchmarks
 ```
 
-To run the benchmark scripts, navigate to the desired benchmark directory and execute the relevant Python script or Jupyter notebook. For example, to run the benchmark in the `benchmarks` directory:
-
-```bash
-python benchmarks/sample_script.py
-```
-
-Or, if you prefer using Jupyter notebooks:
+To run the Jupyter notebook scripts, navigate to the desired benchmark directory: 
 
 ```bash
 jupyter notebook benchmarks/table-donut.ipynb
