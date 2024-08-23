@@ -297,27 +297,32 @@ def plot_sampling(samples, target):
 
     # Plot each sample in the appropriate subplot
     plt.sca(axs[0, 0])  # Set the current axes to the first subplot
-    plot_pdf_2D(target, -4, 4, -4, 4)
+    k = max(4,np.max(np.abs(MH_fixed_samples.samples)))
+    plot_pdf_2D(target, -k, k, -k, k)
     MH_fixed_samples.plot_pair(ax=axs[0, 0])
     axs[0, 0].set_title('MH Fixed Samples')
 
     plt.sca(axs[0, 1])  # Set the current axes to the second subplot
-    plot_pdf_2D(target, -4, 4, -4, 4)
+    k = max(4,np.max(np.abs(MH_adapted_samples.samples)))
+    plot_pdf_2D(target, -k, k, -k, k)
     MH_adapted_samples.plot_pair(ax=axs[0, 1])
     axs[0, 1].set_title('MH Adapted Samples')
 
     plt.sca(axs[0, 2])  # Set the current axes to the third subplot
-    plot_pdf_2D(target, -4, 4, -4, 4)
+    k = max(4,np.max(np.abs(ULA_samples.samples)))
+    plot_pdf_2D(target, -k, k, -k, k)
     ULA_samples.plot_pair(ax=axs[0, 2])
     axs[0, 2].set_title('ULA Samples')
 
     plt.sca(axs[1, 0])  # Set the current axes to the fourth subplot
-    plot_pdf_2D(target, -4, 4, -4, 4)
+    k = max(4,np.max(np.abs(MALA_samples.samples)))
+    plot_pdf_2D(target, -k, k, -k, k)
     MALA_samples.plot_pair(ax=axs[1, 0])
     axs[1, 0].set_title('MALA Samples')
 
     plt.sca(axs[1, 1])  # Set the current axes to the fifth subplot
-    plot_pdf_2D(target, -4, 4, -4, 4)
+    k = max(4,np.max(np.abs(NUTS_samples.samples)))
+    plot_pdf_2D(target, -k, k, -k, k)
     NUTS_samples.plot_pair(ax=axs[1, 1])
     axs[1, 1].set_title('NUTS Samples')
 
