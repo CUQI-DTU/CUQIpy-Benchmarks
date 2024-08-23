@@ -26,7 +26,7 @@ The directory structure of this repository is as follows:
 ```plaintext
 CUQIpy-Benchmarks/
 │
-├── product/
+├── benchmarks/
 │   ├── table-donut.ipynb        # Jupyter notebook for donut distribution
 │   ├── table-banana.ipynb       # Jupyter notebook for banana distribution
 │   └── ...
