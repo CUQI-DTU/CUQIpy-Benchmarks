@@ -215,12 +215,12 @@ def create_comparison(target, scale, Ns, Nb, x0, seed, chains):
 
     # Initialize the DataFrame dictionary
     df_dict = {
-        "Sampling Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
-        "No. of Samples": [Ns[i] for i in range(5)],
-        "No. of Burn-ins": [Nb[i] for i in range(5)],
-        "Scaling Factor": [scale[i] for i in range(5)],
-        "ESS (v0)": [safe_access(ess[i], 0) for i in range(5)],
-        "ESS (v1)": [safe_access(ess[i], 1) for i in range(5)],
+        "Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
+        "Samples": [Ns[i] for i in range(5)],
+        "Burn-ins": [Nb[i] for i in range(5)],
+        "Scale": [scale[i] for i in range(5)],
+        "ESS(v0)": [safe_access(ess[i], 0) for i in range(5)],
+        "ESS(v1)": [safe_access(ess[i], 1) for i in range(5)],
         "AR": [safe_access(ar[i], 1) for i in range(5)],
     }
 
@@ -234,8 +234,8 @@ def create_comparison(target, scale, Ns, Nb, x0, seed, chains):
         rhat = compute_Rhat(samples, data)
 
         # Add Rhat values to the DataFrame dictionary
-        df_dict["Rhat (v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
-        df_dict["Rhat (v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
+        df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
+        df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
 
     # Continue adding other columns
     df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
@@ -335,31 +335,7 @@ def plot_sampling(samples, target):
 
     return fig,  axs
 
-# %% Main call
-if __name__ == "__main__":
-    # Define target distribution and other parameters
-    target = Gaussian(mean=0, std=1)
-    scale = 1.0
-    Ns = 1000
-    Nb = 500
-    x0 = np.array([0])
-    seed = 42
-    chains = 3
-
-    # Generate comparison table and plot
-    df, plot = create_comparison(target, scale, Ns, Nb, x0, seed, chains)
-    
-    # Print the DataFrame as a PrettyTable for better readability
-    pt = PrettyTable(df.columns.tolist())
-    for row in df.itertuples(index=False):
-        pt.add_row(row)
-    print(pt)
-
-    # Display the plot
-    plot.show()
-
-
-    #%%
+#%%
 def print_table(df):
     df['LogPDF'] = df['LogPDF'].apply(lambda x: int(x) if pd.notnull(x) else '-')
     df['Gradient'] = df['Gradient'].apply(lambda x: int(x) if pd.notnull(x) else '-')
