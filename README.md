@@ -27,6 +27,8 @@ The directory structure of this repository is as follows:
 CUQIpy-Benchmarks/
 │
 ├── benchmarks/
+    └── ...
+├── demos/
 │   ├── table-donut.ipynb        # Jupyter notebook for donut distribution
 │   ├── table-banana.ipynb       # Jupyter notebook for banana distribution
 │   └── ...
