@@ -184,7 +184,7 @@ def compute_Rhat(samples, data):
     
     return rhat
 
-def create_comparison(target, scale, Ns, Nb, x0, seed, chains):
+def create_comparison(target, scale, Ns, Nb, x0, seed, chains=1):
     """
     Create a table comparing various sampling methods with ESS values.
     
