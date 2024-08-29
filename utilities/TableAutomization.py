@@ -59,7 +59,7 @@ def MCMC_sampling(target, method, adapted, scale=None, Ns=None, Nb=None, x0=None
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None):
+def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None, selected_methods = None):
     """
     Precompute samples for various MCMC methods and return the results.
     
@@ -70,6 +70,8 @@ def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None)
     Nb     : int or array, number of burn-ins for each sampler
     x0     : initial state, either an array or a CUQI distribution
     seed   : int, random seed
+    selected_methods: list of strings, selected sampling methods (e.g., )
+     
 
     Returns:
     samples : dict, containing samples for each MCMC method
@@ -80,28 +82,35 @@ def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None)
     """
     np.random.seed(seed)
     
+    if selected_methods == None:
+        selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]
+    
+    
     if isinstance(scale, float):
-        scale = np.full(5, scale)
+        scale = np.full(len(selected_methods), scale)
     if isinstance(Ns, int):
-        Ns = np.full(5, Ns)
+        Ns = np.full(len(selected_methods), Ns)
     if isinstance(Nb, int):
-        Nb = np.full(5, Nb)
+        Nb = np.full(len(selected_methods), Nb)
     
     samples = {}
     pr = {}
     
-    # Precompute samples for different samplers
-    samples['MH_fixed'], pr['MH_fixed'] = MCMC_sampling(target, MH, False, scale[0], 
-                                                         Ns[0], Nb[0], x0, seed)
-    samples['MH_adapted'], pr['MH_adapted'] = MCMC_sampling(target, MH, True, scale[1], 
-                                                             Ns[1], Nb[1], x0, seed)
-    samples['ULA'], pr['ULA'] = MCMC_sampling(target, ULA, False, scale[2], 
-                                              Ns[2], Nb[2], x0, seed)
-    samples['MALA'], pr['MALA'] = MCMC_sampling(target, MALA, False, scale[3], 
-                                                Ns[3], Nb[3], x0, seed)
-    samples['NUTS'], pr['NUTS'] = MCMC_sampling(target, NUTS, False, scale[4], 
-                                                Ns[4], Nb[4], x0, seed)
+    # Dictionary to map method names to their corresponding parameters and functions
+    method_mapping = {
+        'MH_fixed': (MH, False),
+        'MH_adapted': (MH, True),
+        'ULA': (ULA, False),
+        'MALA': (MALA, False),
+        'NUTS': (NUTS, False)
+    }
 
+    # Loop over selected methods and compute samples
+    for idx, method in enumerate(selected_methods):
+        if method in method_mapping:
+            mcmc_method, adapted = method_mapping[method]
+            samples[method], pr[method] = MCMC_sampling(target, mcmc_method, adapted, scale[idx], Ns[idx], Nb[idx], x0, seed)
+    
     return samples, pr, scale, Ns, Nb
 
 
@@ -118,8 +127,8 @@ def count_function(pr, string):
     Returns:
     counter : array, containing counts of the specified function calls
     """
-    counter = np.zeros(5)
-    for i in range(5):
+    counter = np.zeros(len(pr.values()))
+    for i in range(len(pr.values())):
         s = io.StringIO()
         ps = pstats.Stats(list(pr.values())[i], stream=s).sort_stats(SortKey.PCALLS)
         ps.print_stats()
@@ -133,34 +142,36 @@ def count_function(pr, string):
 
 # %% Compute ESS for all sampling methods
 def compute_ESS(samples):
-    """Compute effective sample size (ESS) for all sampling methods."""
-    ess = np.zeros((5, 2))
+    """Compute effective sample size (ESS) for the selected sampling methods."""
+    ess = {}
     
-    ess[0] = samples['MH_fixed'].compute_ess()
-    ess[1] = samples['MH_adapted'].compute_ess()
-    ess[2] = samples['ULA'].compute_ess()
-    ess[3] = samples['MALA'].compute_ess()
-    ess[4] = samples['NUTS'].compute_ess()
+    for method in samples.keys():
+        ess[method] = samples[method].compute_ess()
     
     return ess
 
 # %% Compute acceptance rate for all sampling methods
 def compute_AR(samples):
-    """Compute acceptance rate (AR) for all sampling methods."""
-    ar = np.zeros((5, 2))
-    
-    ar[0] = samples['MH_fixed'].acc_rate
-    ar[1] = samples['MH_adapted'].acc_rate
-    ar[2] = samples['ULA'].acc_rate
-    ar[3] = samples['MALA'].acc_rate
-    ar[4] = len(np.unique(samples['NUTS'].samples[0])) / len(samples['NUTS'].samples[0])
+    """Compute acceptance rate (AR) for the selected sampling methods."""
+    ar = {}
+
+    for method in samples.keys():
+        if method == 'NUTS':
+            ar[method] = len(np.unique(samples[method].samples[0])) / len(samples[method].samples[0])
+        else:
+            ar[method] = samples[method].acc_rate
     
     return ar
 
+
 # %% Utility function to safely access array elements
-def safe_access(array, index):
-    """Round the element at the specified index to 3 decimals."""
-    return round(array[index], 3) 
+def safe_access(value, index=None):
+    """Round the element at the specified index or the scalar value to 3 decimals."""
+    if isinstance(value, (list, np.ndarray)):
+        return round(value[index], 3)
+    else:
+        return round(value, 3)
+
 
 # %% Compute Rhat statistic for convergence diagnostics
 def compute_Rhat(samples, data):
@@ -184,7 +195,7 @@ def compute_Rhat(samples, data):
     
     return rhat
 
-def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =None, chains=None, selected_criteria=None):
+def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =None, chains=None, selected_criteria=None, selected_methods = None):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -197,7 +208,7 @@ def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =N
     seed   : int, random seed
     chains : int, number of MCMC chains for Rhat calculation
     selected_criteria : list of strings, selected criteria for comparison (e.g., ["ESS", "AR"])
-    
+    selected_methods:
     
     Returns:
     df   : pandas.DataFrame, comparison table
@@ -207,50 +218,61 @@ def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =N
     if selected_criteria is None:
         selected_criteria = ["ESS", "AR", "LogPDF", "Gradient"]
 
+
+    # Set default methods if none are provided
+    all_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]
+    if selected_methods is None:
+        selected_methods = all_methods
+
     # Run precomputation
-    samples, pr, scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed)
+    samples, pr,  scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
 
     df_dict = {
-        "Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
-        "Samples": [Ns[i] for i in range(5)],
-        "Burn-ins": [Nb[i] for i in range(5)],
-        "Scale": [scale[i] for i in range(5)]
+        "Method": selected_methods,
+        "Samples": [Ns[i] for i in range(len(selected_methods))],
+        "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
+        "Scale": [scale[i] for i in  range(len(selected_methods))]
     }
 
     # Conditionally compute and add the selected metrics to the DataFrame dictionary
     if "ESS" in selected_criteria:
         ess = compute_ESS(samples)
-        df_dict["ESS(v0)"] = [safe_access(ess[i], 0) for i in range(5)]
-        df_dict["ESS(v1)"] = [safe_access(ess[i], 1) for i in range(5)]
-    
+        df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
+        df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
+
     if "AR" in selected_criteria:
         ar = compute_AR(samples)
-        df_dict["AR"] = [safe_access(ar[i], 1) for i in range(5)]
+        df_dict["AR"] = [safe_access(ar[method]) for method in selected_methods]
+
+    # if "AR" in selected_criteria:
+    #     ar = compute_AR(samples)
+    #     df_dict["AR"] = [safe_access(ar[i], 1) for i in range(5)]
     
-    if "LogPDF" in selected_criteria:
-        logpdf = count_function(pr, "logpdf")
-        df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
-        df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
+    # if "LogPDF" in selected_criteria:
+    #     logpdf = count_function(pr, "logpdf")
+    #     df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
+    #     df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
 
     
-    if "Gradient" in selected_criteria:
-        gradient = count_function(pr, "_gradient")
-        df_dict["Gradient"] = [gradient[i] for i in range(5)]
-        df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
+    # if "Gradient" in selected_criteria:
+    #     gradient = count_function(pr, "_gradient")
+    #     df_dict["Gradient"] = [gradient[i] for i in range(5)]
+    #     df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
     
-    if "Rhat" in selected_criteria:
-        if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
-            data = []
-            for i in range(chains - 1):
-                data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
-            rhat = compute_Rhat(samples, data)
-            df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
-            df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
+    # if "Rhat" in selected_criteria:
+    #     if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+    #         data = []
+    #         for i in range(chains - 1):
+    #             data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
+    #         rhat = compute_Rhat(samples, data)
+    #         df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
+    #         df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
     
+
     
     # Generate sampling plot
-    plot = plot_sampling(samples, target)
+   # plot = plot_sampling(samples, target)
 
     # Initialize the DataFrame dictionary
     
@@ -261,7 +283,8 @@ def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =N
     df = df.fillna("-")
 
     # Display the DataFrame without the index
-    return df, plot
+    return df
+#, plot
 
 #%%
 #plotting function 
