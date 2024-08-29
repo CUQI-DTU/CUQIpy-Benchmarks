@@ -184,7 +184,7 @@ def compute_Rhat(samples, data):
     
     return rhat
 
-def create_comparison(target, scale, Ns, Nb, x0, seed, chains):
+def create_comparison(target, scale, Ns, Nb, x0, seed, chains, selected_criteria=None):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -196,51 +196,64 @@ def create_comparison(target, scale, Ns, Nb, x0, seed, chains):
     x0     : initial state, either an array or a CUQI distribution
     seed   : int, random seed
     chains : int, number of MCMC chains for Rhat calculation
+    selected_criteria : list of strings, selected criteria for comparison (e.g., ["ESS", "AR"])
+    
     
     Returns:
     df   : pandas.DataFrame, comparison table
     plot : matplotlib figure, plot of the samples
     """
+
+    if selected_criteria is None:
+        selected_criteria = ["ESS", "AR", "LogPDF", "Gradient"]
+
     # Run precomputation
     samples, pr, scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed)
 
-    # Compute metrics
-    ess = compute_ESS(samples)
-    ar = compute_AR(samples)
-    logpdf = count_function(pr, "logpdf")
-    gradient = count_function(pr, "_gradient")
-
-    # Generate sampling plot
-    plot = plot_sampling(samples, target)
-
-    # Initialize the DataFrame dictionary
     df_dict = {
         "Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
         "Samples": [Ns[i] for i in range(5)],
         "Burn-ins": [Nb[i] for i in range(5)],
-        "Scale": [scale[i] for i in range(5)],
-        "ESS(v0)": [safe_access(ess[i], 0) for i in range(5)],
-        "ESS(v1)": [safe_access(ess[i], 1) for i in range(5)],
-        "AR": [safe_access(ar[i], 1) for i in range(5)],
+        "Scale": [scale[i] for i in range(5)]
     }
 
-# Check if x0 is a CUQI distribution object
-    if hasattr(x0, '__module__') and \
-    x0.__module__.startswith("cuqi.distribution"):
-        # Initialize data for Rhat calculation
-        data = []
-        for i in range(chains - 1):
-            data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
-        rhat = compute_Rhat(samples, data)
+    # Conditionally compute and add the selected metrics to the DataFrame dictionary
+    if "ESS" in selected_criteria:
+        ess = compute_ESS(samples)
+        df_dict["ESS(v0)"] = [safe_access(ess[i], 0) for i in range(5)]
+        df_dict["ESS(v1)"] = [safe_access(ess[i], 1) for i in range(5)]
+    
+    if "AR" in selected_criteria:
+        ar = compute_AR(samples)
+        df_dict["AR"] = [safe_access(ar[i], 1) for i in range(5)]
+    
+    if "LogPDF" in selected_criteria:
+        logpdf = count_function(pr, "logpdf")
+        df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
+        df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
 
-        # Add Rhat values to the DataFrame dictionary
-        df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
-        df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
+    
+    if "Gradient" in selected_criteria:
+        gradient = count_function(pr, "_gradient")
+        df_dict["Gradient"] = [gradient[i] for i in range(5)]
+        df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
-    # Continue adding other columns
-    df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
-    df_dict["Gradient"] = [gradient[i] for i in range(5)]
+    
+    if "Rhat" in selected_criteria:
+        if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+            data = []
+            for i in range(chains - 1):
+                data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
+            rhat = compute_Rhat(samples, data)
+            df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
+            df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
+    
+    
+    # Generate sampling plot
+    plot = plot_sampling(samples, target)
 
+    # Initialize the DataFrame dictionary
+    
     # Create the DataFrame
     df = pd.DataFrame(df_dict)
 
@@ -337,8 +350,8 @@ def plot_sampling(samples, target):
 
 #%%
 def print_table(df):
-    df['LogPDF'] = df['LogPDF'].apply(lambda x: int(x) if pd.notnull(x) else '-')
-    df['Gradient'] = df['Gradient'].apply(lambda x: int(x) if pd.notnull(x) else '-')
+    
+    
 
     # Create a PrettyTable object
     table = PrettyTable()
