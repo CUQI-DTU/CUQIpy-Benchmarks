@@ -17,7 +17,7 @@ from prettytable import PrettyTable
 from IPython.display import Image, display
 
 # %% General MCMC sampling function
-def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0, seed):
+def MCMC_sampling(target, method, adapted, scale=None, Ns=None, Nb=None, x0=None, seed=None):
     """
     Perform MCMC sampling given a target distribution, method, and parameters.
     
@@ -59,7 +59,7 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0, seed):
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns, Nb, x0, seed):
+def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None):
     """
     Precompute samples for various MCMC methods and return the results.
     
@@ -184,7 +184,7 @@ def compute_Rhat(samples, data):
     
     return rhat
 
-def create_comparison(target, scale, Ns, Nb, x0, seed, chains, selected_criteria=None):
+def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =None, chains=None, selected_criteria=None):
     """
     Create a table comparing various sampling methods with ESS values.
     
