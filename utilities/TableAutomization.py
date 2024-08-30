@@ -41,22 +41,23 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
 
     pr = cProfile.Profile()
     pr.enable()
-    np.random.seed(seed)
-    
-    if method == MH:
-        sampler = method(target=target, scale=scale, x0=x0)
-        if adapted:
-            x = sampler.sample_adapt(Ns, Nb)
-        else:
+    try:
+        np.random.seed(seed)
+        
+        if method == MH:
+            sampler = method(target=target, scale=scale, x0=x0)
+            if adapted:
+                x = sampler.sample_adapt(Ns, Nb)
+            else:
+                x = sampler.sample(Ns, Nb)
+        elif method == NUTS:
+            sampler = method(target, x0)
             x = sampler.sample(Ns, Nb)
-    elif method == NUTS:
-        sampler = method(target, x0)
-        x = sampler.sample(Ns, Nb)
-    else:
-        sampler = method(target, scale, x0)
-        x = sampler.sample(Ns, Nb)
-    
-    pr.disable()
+        else:
+            sampler = method(target, scale, x0)
+            x = sampler.sample(Ns, Nb)
+    finally:
+        pr.disable()
     return x, pr
 
 # %% Precompute samples function
@@ -176,27 +177,7 @@ def safe_access(value, index=None):
         return round(value, 3)
 
 
-# %% Compute Rhat statistic for convergence diagnostics
-# def compute_Rhat(samples, data):
-#     """
-#     Compute Rhat statistic for convergence diagnostics across multiple chains.
-    
-#     Parameters:
-#     samples : dict, containing samples for each MCMC method
-#     data    : list, containing samples from different chains
 
-#     Returns:
-#     rhat : array, containing Rhat values for all sampling methods
-#     """
-#     rhat = np.zeros((5, 2))
-    
-#     rhat[0] = samples['MH_fixed'].compute_rhat([item["MH_fixed"] for item in data])
-#     rhat[1] = samples['MH_adapted'].compute_rhat([item["MH_adapted"] for item in data])
-#     rhat[2] = samples['ULA'].compute_rhat([item["ULA"] for item in data])
-#     rhat[3] = samples['MALA'].compute_rhat([item["MALA"] for item in data])
-#     rhat[4] = samples['NUTS'].compute_rhat([item["NUTS"] for item in data])
-    
-#     return rhat
 
 def compute_Rhat(samples, data):
     """
@@ -217,7 +198,7 @@ def compute_Rhat(samples, data):
     return rhat
 
 
-def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient"], selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -269,6 +250,8 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
         df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
     if "Rhat" in selected_criteria:
+        if hasattr(target,'prior'):
+            x0 = target.prior
         if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
             data = []
             for i in range(chains - 1):
