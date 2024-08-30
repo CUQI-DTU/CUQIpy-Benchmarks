@@ -48,10 +48,14 @@ __Type 0__ :
 - this is not an inverse problem
 - givn that there is already a target distribution
 - the user choosees the initial point/ the initial point distribution
+
+
 __Type 1__ :
 - inverse problems
 - likelihood, prior and  posterior
 - no need for a initial point
+
+
 __Type 2__ :
 - PDE-type inverse problems
 - given a fixed likelihood, prior and posterior for the PDE
