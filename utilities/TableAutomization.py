@@ -17,7 +17,7 @@ from prettytable import PrettyTable
 from IPython.display import Image, display
 
 # %% General MCMC sampling function
-def MCMC_sampling(target, method, adapted, scale=None, Ns=None, Nb=None, x0=None, seed=None):
+def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     """
     Perform MCMC sampling given a target distribution, method, and parameters.
     
@@ -59,7 +59,7 @@ def MCMC_sampling(target, method, adapted, scale=None, Ns=None, Nb=None, x0=None
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None, selected_methods = None):
+def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
     """
     Precompute samples for various MCMC methods and return the results.
     
@@ -81,10 +81,7 @@ def precompute_samples(target, scale=None, Ns=None, Nb=None, x0=None, seed=None,
     Nb      : array, adjusted number of burn-ins
     """
     np.random.seed(seed)
-    
-    if selected_methods == None:
-        selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]
-    
+       
     
     if isinstance(scale, float):
         scale = np.full(len(selected_methods), scale)
@@ -125,20 +122,24 @@ def count_function(pr, string):
     string : str, function name to count in the profiling results
 
     Returns:
-    counter : array, containing counts of the specified function calls
+    counter : dict, containing counts of the specified function calls for each method
     """
-    counter = np.zeros(len(pr.values()))
-    for i in range(len(pr.values())):
+    counter = {}
+
+    for method in pr.keys():
         s = io.StringIO()
-        ps = pstats.Stats(list(pr.values())[i], stream=s).sort_stats(SortKey.PCALLS)
+        ps = pstats.Stats(pr[method], stream=s).sort_stats(SortKey.PCALLS)
         ps.print_stats()
         lines = s.getvalue().split('\n')
-       
+        
         if any(string in line for line in lines):
             idx = [string in line for line in lines].index(True)
-            counter[i] = lines[idx].split()[0]
-        
+            counter[method] = int(lines[idx].split()[0])
+        else:
+            counter[method] = 0  # If the function was not found, set the count to 0
+
     return counter
+
 
 # %% Compute ESS for all sampling methods
 def compute_ESS(samples):
@@ -174,28 +175,47 @@ def safe_access(value, index=None):
 
 
 # %% Compute Rhat statistic for convergence diagnostics
+# def compute_Rhat(samples, data):
+#     """
+#     Compute Rhat statistic for convergence diagnostics across multiple chains.
+    
+#     Parameters:
+#     samples : dict, containing samples for each MCMC method
+#     data    : list, containing samples from different chains
+
+#     Returns:
+#     rhat : array, containing Rhat values for all sampling methods
+#     """
+#     rhat = np.zeros((5, 2))
+    
+#     rhat[0] = samples['MH_fixed'].compute_rhat([item["MH_fixed"] for item in data])
+#     rhat[1] = samples['MH_adapted'].compute_rhat([item["MH_adapted"] for item in data])
+#     rhat[2] = samples['ULA'].compute_rhat([item["ULA"] for item in data])
+#     rhat[3] = samples['MALA'].compute_rhat([item["MALA"] for item in data])
+#     rhat[4] = samples['NUTS'].compute_rhat([item["NUTS"] for item in data])
+    
+#     return rhat
+
 def compute_Rhat(samples, data):
     """
     Compute Rhat statistic for convergence diagnostics across multiple chains.
     
     Parameters:
     samples : dict, containing samples for each MCMC method
-    data    : list, containing samples from different chains
+    data    : list of dicts, containing samples from different chains for each method
 
     Returns:
-    rhat : array, containing Rhat values for all sampling methods
+    rhat : dict, containing Rhat values for each sampling method
     """
-    rhat = np.zeros((5, 2))
-    
-    rhat[0] = samples['MH_fixed'].compute_rhat([item["MH_fixed"] for item in data])
-    rhat[1] = samples['MH_adapted'].compute_rhat([item["MH_adapted"] for item in data])
-    rhat[2] = samples['ULA'].compute_rhat([item["ULA"] for item in data])
-    rhat[3] = samples['MALA'].compute_rhat([item["MALA"] for item in data])
-    rhat[4] = samples['NUTS'].compute_rhat([item["NUTS"] for item in data])
-    
+    rhat = {}
+
+    for method in samples.keys():
+        rhat[method] = samples[method].compute_rhat([item[method] for item in data])
+
     return rhat
 
-def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =None, chains=None, selected_criteria=None, selected_methods = None):
+
+def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient"], selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -214,15 +234,6 @@ def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =N
     df   : pandas.DataFrame, comparison table
     plot : matplotlib figure, plot of the samples
     """
-
-    if selected_criteria is None:
-        selected_criteria = ["ESS", "AR", "LogPDF", "Gradient"]
-
-
-    # Set default methods if none are provided
-    all_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]
-    if selected_methods is None:
-        selected_methods = all_methods
 
     # Run precomputation
     samples, pr,  scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
@@ -244,31 +255,28 @@ def create_comparison(target, scale =None, Ns =None, Nb =None, x0 =None, seed =N
         ar = compute_AR(samples)
         df_dict["AR"] = [safe_access(ar[method]) for method in selected_methods]
 
-    # if "AR" in selected_criteria:
-    #     ar = compute_AR(samples)
-    #     df_dict["AR"] = [safe_access(ar[i], 1) for i in range(5)]
+    if "LogPDF" in selected_criteria:
+        logpdf = count_function(pr, "logpdf")
+        df_dict["LogPDF"] = [logpdf[method] for method in selected_methods]
+        df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
     
-    # if "LogPDF" in selected_criteria:
-    #     logpdf = count_function(pr, "logpdf")
-    #     df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
-    #     df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
+    
+    if "Gradient" in selected_criteria:
+        gradient = count_function(pr, "_gradient")
+        df_dict["Gradient"] = [gradient[method] for method in selected_methods]
+        df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
-    
-    # if "Gradient" in selected_criteria:
-    #     gradient = count_function(pr, "_gradient")
-    #     df_dict["Gradient"] = [gradient[i] for i in range(5)]
-    #     df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
+    if "Rhat" in selected_criteria:
+        if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+            data = []
+            for i in range(chains - 1):
+                chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
+                data.append(chain_samples)
+            rhat = compute_Rhat(samples, data)
+            df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
+            df_dict["Rhat(v1)"] = [safe_access(rhat[method], 1) for method in selected_methods]
 
-    
-    # if "Rhat" in selected_criteria:
-    #     if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
-    #         data = []
-    #         for i in range(chains - 1):
-    #             data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
-    #         rhat = compute_Rhat(samples, data)
-    #         df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
-    #         df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
-    
+       
 
     
     # Generate sampling plot
