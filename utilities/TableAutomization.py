@@ -17,7 +17,8 @@ from prettytable import PrettyTable
 from IPython.display import Image, display
 
 # %% General MCMC sampling function
-def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0 =None, seed = None) :
+def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
+
     """
     Perform MCMC sampling given a target distribution, method, and parameters.
     
@@ -59,7 +60,8 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0 =None, seed = None)
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns, Nb, x0 =None, seed =None):
+def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+
     """
     Precompute samples for various MCMC methods and return the results.
     
@@ -70,6 +72,8 @@ def precompute_samples(target, scale, Ns, Nb, x0 =None, seed =None):
     Nb     : int or array, number of burn-ins for each sampler
     x0     : initial state, either an array or a CUQI distribution
     seed   : int, random seed
+    selected_methods: list of strings, selected sampling methods (e.g., )
+     
 
     Returns:
     samples : dict, containing samples for each MCMC method
@@ -79,29 +83,33 @@ def precompute_samples(target, scale, Ns, Nb, x0 =None, seed =None):
     Nb      : array, adjusted number of burn-ins
     """
     np.random.seed(seed)
+       
     
     if isinstance(scale, float):
-        scale = np.full(5, scale)
+        scale = np.full(len(selected_methods), scale)
     if isinstance(Ns, int):
-        Ns = np.full(5, Ns)
+        Ns = np.full(len(selected_methods), Ns)
     if isinstance(Nb, int):
-        Nb = np.full(5, Nb)
+        Nb = np.full(len(selected_methods), Nb)
     
     samples = {}
     pr = {}
     
-    # Precompute samples for different samplers
-    samples['MH_fixed'], pr['MH_fixed'] = MCMC_sampling(target, MH, False, scale[0], 
-                                                         Ns[0], Nb[0], x0, seed)
-    samples['MH_adapted'], pr['MH_adapted'] = MCMC_sampling(target, MH, True, scale[1], 
-                                                             Ns[1], Nb[1], x0, seed)
-    samples['ULA'], pr['ULA'] = MCMC_sampling(target, ULA, False, scale[2], 
-                                              Ns[2], Nb[2], x0, seed)
-    samples['MALA'], pr['MALA'] = MCMC_sampling(target, MALA, False, scale[3], 
-                                                Ns[3], Nb[3], x0, seed)
-    samples['NUTS'], pr['NUTS'] = MCMC_sampling(target, NUTS, False, scale[4], 
-                                                Ns[4], Nb[4], x0, seed)
+    # Dictionary to map method names to their corresponding parameters and functions
+    method_mapping = {
+        'MH_fixed': (MH, False),
+        'MH_adapted': (MH, True),
+        'ULA': (ULA, False),
+        'MALA': (MALA, False),
+        'NUTS': (NUTS, False)
+    }
 
+    # Loop over selected methods and compute samples
+    for idx, method in enumerate(selected_methods):
+        if method in method_mapping:
+            mcmc_method, adapted = method_mapping[method]
+            samples[method], pr[method] = MCMC_sampling(target, mcmc_method, adapted, scale[idx], Ns[idx], Nb[idx], x0, seed)
+    
     return samples, pr, scale, Ns, Nb
 
 
@@ -116,75 +124,100 @@ def count_function(pr, string):
     string : str, function name to count in the profiling results
 
     Returns:
-    counter : array, containing counts of the specified function calls
+    counter : dict, containing counts of the specified function calls for each method
     """
-    counter = np.zeros(5)
-    for i in range(5):
+    counter = {}
+
+    for method in pr.keys():
         s = io.StringIO()
-        ps = pstats.Stats(list(pr.values())[i], stream=s).sort_stats(SortKey.PCALLS)
+        ps = pstats.Stats(pr[method], stream=s).sort_stats(SortKey.PCALLS)
         ps.print_stats()
         lines = s.getvalue().split('\n')
-       
+        
         if any(string in line for line in lines):
             idx = [string in line for line in lines].index(True)
-            counter[i] = lines[idx].split()[0]
-        
+            counter[method] = int(lines[idx].split()[0])
+        else:
+            counter[method] = 0  # If the function was not found, set the count to 0
+
     return counter
+
 
 # %% Compute ESS for all sampling methods
 def compute_ESS(samples):
-    """Compute effective sample size (ESS) for all sampling methods."""
-    ess = np.zeros((5, 2))
+    """Compute effective sample size (ESS) for the selected sampling methods."""
+    ess = {}
     
-    ess[0] = samples['MH_fixed'].compute_ess()
-    ess[1] = samples['MH_adapted'].compute_ess()
-    ess[2] = samples['ULA'].compute_ess()
-    ess[3] = samples['MALA'].compute_ess()
-    ess[4] = samples['NUTS'].compute_ess()
+    for method in samples.keys():
+        ess[method] = samples[method].compute_ess()
     
     return ess
 
 # %% Compute acceptance rate for all sampling methods
 def compute_AR(samples):
-    """Compute acceptance rate (AR) for all sampling methods."""
-    ar = np.zeros((5, 2))
-    
-    ar[0] = samples['MH_fixed'].acc_rate
-    ar[1] = samples['MH_adapted'].acc_rate
-    ar[2] = samples['ULA'].acc_rate
-    ar[3] = samples['MALA'].acc_rate
-    ar[4] = len(np.unique(samples['NUTS'].samples[0])) / len(samples['NUTS'].samples[0])
+    """Compute acceptance rate (AR) for the selected sampling methods."""
+    ar = {}
+
+    for method in samples.keys():
+        if method == 'NUTS':
+            ar[method] = len(np.unique(samples[method].samples[0])) / len(samples[method].samples[0])
+        else:
+            ar[method] = samples[method].acc_rate
     
     return ar
 
+
 # %% Utility function to safely access array elements
-def safe_access(array, index):
-    """Round the element at the specified index to 3 decimals."""
-    return round(array[index], 3) 
+def safe_access(value, index=None):
+    """Round the element at the specified index or the scalar value to 3 decimals."""
+    if isinstance(value, (list, np.ndarray)):
+        return round(value[index], 3)
+    else:
+        return round(value, 3)
+
 
 # %% Compute Rhat statistic for convergence diagnostics
+# def compute_Rhat(samples, data):
+#     """
+#     Compute Rhat statistic for convergence diagnostics across multiple chains.
+    
+#     Parameters:
+#     samples : dict, containing samples for each MCMC method
+#     data    : list, containing samples from different chains
+
+#     Returns:
+#     rhat : array, containing Rhat values for all sampling methods
+#     """
+#     rhat = np.zeros((5, 2))
+    
+#     rhat[0] = samples['MH_fixed'].compute_rhat([item["MH_fixed"] for item in data])
+#     rhat[1] = samples['MH_adapted'].compute_rhat([item["MH_adapted"] for item in data])
+#     rhat[2] = samples['ULA'].compute_rhat([item["ULA"] for item in data])
+#     rhat[3] = samples['MALA'].compute_rhat([item["MALA"] for item in data])
+#     rhat[4] = samples['NUTS'].compute_rhat([item["NUTS"] for item in data])
+    
+#     return rhat
+
 def compute_Rhat(samples, data):
     """
     Compute Rhat statistic for convergence diagnostics across multiple chains.
     
     Parameters:
     samples : dict, containing samples for each MCMC method
-    data    : list, containing samples from different chains
+    data    : list of dicts, containing samples from different chains for each method
 
     Returns:
-    rhat : array, containing Rhat values for all sampling methods
+    rhat : dict, containing Rhat values for each sampling method
     """
-    rhat = np.zeros((5, 2))
-    
-    rhat[0] = samples['MH_fixed'].compute_rhat([item["MH_fixed"] for item in data])
-    rhat[1] = samples['MH_adapted'].compute_rhat([item["MH_adapted"] for item in data])
-    rhat[2] = samples['ULA'].compute_rhat([item["ULA"] for item in data])
-    rhat[3] = samples['MALA'].compute_rhat([item["MALA"] for item in data])
-    rhat[4] = samples['NUTS'].compute_rhat([item["NUTS"] for item in data])
-    
+    rhat = {}
+
+    for method in samples.keys():
+        rhat[method] = samples[method].compute_rhat([item[method] for item in data])
+
     return rhat
 
-def create_comparison(target, scale, Ns, Nb, x0 = None, seed = None, chains=1):
+
+def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient"], selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -196,51 +229,63 @@ def create_comparison(target, scale, Ns, Nb, x0 = None, seed = None, chains=1):
     x0     : initial state, either an array or a CUQI distribution
     seed   : int, random seed
     chains : int, number of MCMC chains for Rhat calculation
+    selected_criteria : list of strings, selected criteria for comparison (e.g., ["ESS", "AR"])
+    selected_methods:
     
     Returns:
     df   : pandas.DataFrame, comparison table
     plot : matplotlib figure, plot of the samples
     """
+
     # Run precomputation
-    samples, pr, scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed)
+    samples, pr,  scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
 
-    # Compute metrics
-    ess = compute_ESS(samples)
-    ar = compute_AR(samples)
-    logpdf = count_function(pr, "logpdf")
-    gradient = count_function(pr, "_gradient")
-
-    # Generate sampling plot
-    plot = plot_sampling(samples, target)
-
-    # Initialize the DataFrame dictionary
     df_dict = {
-        "Method": ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"],
-        "Samples": [Ns[i] for i in range(5)],
-        "Burn-ins": [Nb[i] for i in range(5)],
-        "Scale": [scale[i] for i in range(5)],
-        "ESS(v0)": [safe_access(ess[i], 0) for i in range(5)],
-        "ESS(v1)": [safe_access(ess[i], 1) for i in range(5)],
-        "AR": [safe_access(ar[i], 1) for i in range(5)],
+        "Method": selected_methods,
+        "Samples": [Ns[i] for i in range(len(selected_methods))],
+        "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
+        "Scale": [scale[i] for i in  range(len(selected_methods))]
     }
 
-# Check if x0 is a CUQI distribution object
-    if hasattr(x0, '__module__') and \
-    x0.__module__.startswith("cuqi.distribution"):
-        # Initialize data for Rhat calculation
-        data = []
-        for i in range(chains - 1):
-            data.append(precompute_samples(target, scale, Ns, Nb, x0, seed)[0])
-        rhat = compute_Rhat(samples, data)
+    # Conditionally compute and add the selected metrics to the DataFrame dictionary
+    if "ESS" in selected_criteria:
+        ess = compute_ESS(samples)
+        df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
+        df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
 
-        # Add Rhat values to the DataFrame dictionary
-        df_dict["Rhat(v0)"] = [safe_access(rhat[i], 0) for i in range(5)]
-        df_dict["Rhat(v1)"] = [safe_access(rhat[i], 1) for i in range(5)]
+    if "AR" in selected_criteria:
+        ar = compute_AR(samples)
+        df_dict["AR"] = [safe_access(ar[method]) for method in selected_methods]
 
-    # Continue adding other columns
-    df_dict["LogPDF"] = [logpdf[i] for i in range(5)]
-    df_dict["Gradient"] = [gradient[i] for i in range(5)]
+    if "LogPDF" in selected_criteria:
+        logpdf = count_function(pr, "logpdf")
+        df_dict["LogPDF"] = [logpdf[method] for method in selected_methods]
+        df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
+    
+    
+    if "Gradient" in selected_criteria:
+        gradient = count_function(pr, "_gradient")
+        df_dict["Gradient"] = [gradient[method] for method in selected_methods]
+        df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
+    if "Rhat" in selected_criteria:
+        if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
+            data = []
+            for i in range(chains - 1):
+                chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
+                data.append(chain_samples)
+            rhat = compute_Rhat(samples, data)
+            df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
+            df_dict["Rhat(v1)"] = [safe_access(rhat[method], 1) for method in selected_methods]
+
+       
+
+    
+    # Generate sampling plot
+    plot = plot_sampling(samples, target, selected_methods)
+
+    # Initialize the DataFrame dictionary
+    
     # Create the DataFrame
     df = pd.DataFrame(df_dict)
 
@@ -283,62 +328,52 @@ def plot_pdf_1D(distb, min, max, **kwargs):
     plt.plot(grid, y, **kwargs)
 
 # %% Plot the sampling results
-def plot_sampling(samples, target):
+def plot_sampling(samples, target, selected_methods):
     """Plot the sampling results for visual comparison."""
-    # Perform MCMC sampling
-    MH_fixed_samples = samples['MH_fixed']
-    MH_adapted_samples = samples['MH_adapted']
-    ULA_samples = samples['ULA']
-    MALA_samples =samples['MALA']
-    NUTS_samples = samples['NUTS']
+    # Determine the number of selected methods
+    num_methods = len(selected_methods)
+    
+    # Create a figure with subplots based on the number of selected methods
+    num_cols = 3  # We can fit up to 3 plots per row
+    num_rows = (num_methods + num_cols - 1) // num_cols  # Calculate required rows
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(6*num_cols, 6*num_rows))  # Adjust the figure size as needed
+    
+    # If there's only one row, axs will not be a 2D array, so we need to handle that case
+    if num_rows == 1:
+        axs = np.expand_dims(axs, axis=0)
+    
+    # Flatten axs to iterate easily if the number of plots is less than the grid size
+    axs = axs.flatten()
 
-    # Create a figure with a 2x3 grid of subplots (2 rows, 3 columns)
-    fig, axs = plt.subplots(2, 3, figsize=(18, 12))  # Adjust the figure size as needed
-
-    # Plot each sample in the appropriate subplot
-    plt.sca(axs[0, 0])  # Set the current axes to the first subplot
-    k = max(4,np.max(np.abs(MH_fixed_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    MH_fixed_samples.plot_pair(ax=axs[0, 0])
-    axs[0, 0].set_title('MH Fixed Samples')
-
-    plt.sca(axs[0, 1])  # Set the current axes to the second subplot
-    k = max(4,np.max(np.abs(MH_adapted_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    MH_adapted_samples.plot_pair(ax=axs[0, 1])
-    axs[0, 1].set_title('MH Adapted Samples')
-
-    plt.sca(axs[0, 2])  # Set the current axes to the third subplot
-    k = max(4,np.max(np.abs(ULA_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    ULA_samples.plot_pair(ax=axs[0, 2])
-    axs[0, 2].set_title('ULA Samples')
-
-    plt.sca(axs[1, 0])  # Set the current axes to the fourth subplot
-    k = max(4,np.max(np.abs(MALA_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    MALA_samples.plot_pair(ax=axs[1, 0])
-    axs[1, 0].set_title('MALA Samples')
-
-    plt.sca(axs[1, 1])  # Set the current axes to the fifth subplot
-    k = max(4,np.max(np.abs(NUTS_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    NUTS_samples.plot_pair(ax=axs[1, 1])
-    axs[1, 1].set_title('NUTS Samples')
-
-    # Hide the empty subplot (bottom right) if there are fewer than 6 plots
-    fig.delaxes(axs[1, 2])
-
+    # Loop through each selected method and plot the corresponding samples
+    for i, method in enumerate(selected_methods):
+        k = max(4, np.max(np.abs(samples[method].samples)))
+        
+        # Set the current axes to the correct subplot
+        plt.sca(axs[i])
+        
+        # Plot the target distribution first
+        plot_pdf_2D(target, -k, k, -k, k)
+        
+        # Plot the MCMC samples on top of the target distribution
+        samples[method].plot_pair(ax=axs[i])
+        
+        axs[i].set_title(f'{method.replace("_", " ").title()} Samples')
+    
+    # Hide any unused subplots if fewer methods are selected
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+    
     # Adjust layout to prevent overlap
     plt.tight_layout()
     plt.close(fig)
 
-    return fig,  axs
+    return fig, axs
 
 #%%
 def print_table(df):
-    df['LogPDF'] = df['LogPDF'].apply(lambda x: int(x) if pd.notnull(x) else '-')
-    df['Gradient'] = df['Gradient'].apply(lambda x: int(x) if pd.notnull(x) else '-')
+    
+    
 
     # Create a PrettyTable object
     table = PrettyTable()
