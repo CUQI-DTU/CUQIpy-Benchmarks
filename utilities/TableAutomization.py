@@ -18,6 +18,7 @@ from IPython.display import Image, display
 
 # %% General MCMC sampling function
 def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
+
     """
     Perform MCMC sampling given a target distribution, method, and parameters.
     
@@ -60,6 +61,7 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
 
 # %% Precompute samples function
 def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+
     """
     Precompute samples for various MCMC methods and return the results.
     
