@@ -280,7 +280,7 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
 
     
     # Generate sampling plot
-   # plot = plot_sampling(samples, target)
+    plot = plot_sampling(samples, target, selected_methods)
 
     # Initialize the DataFrame dictionary
     
@@ -291,8 +291,7 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
     df = df.fillna("-")
 
     # Display the DataFrame without the index
-    return df
-#, plot
+    return df, plot
 
 #%%
 #plotting function 
@@ -327,57 +326,47 @@ def plot_pdf_1D(distb, min, max, **kwargs):
     plt.plot(grid, y, **kwargs)
 
 # %% Plot the sampling results
-def plot_sampling(samples, target):
+def plot_sampling(samples, target, selected_methods):
     """Plot the sampling results for visual comparison."""
-    # Perform MCMC sampling
-    MH_fixed_samples = samples['MH_fixed']
-    MH_adapted_samples = samples['MH_adapted']
-    ULA_samples = samples['ULA']
-    MALA_samples =samples['MALA']
-    NUTS_samples = samples['NUTS']
+    # Determine the number of selected methods
+    num_methods = len(selected_methods)
+    
+    # Create a figure with subplots based on the number of selected methods
+    num_cols = 3  # We can fit up to 3 plots per row
+    num_rows = (num_methods + num_cols - 1) // num_cols  # Calculate required rows
+    fig, axs = plt.subplots(num_rows, num_cols, figsize=(6*num_cols, 6*num_rows))  # Adjust the figure size as needed
+    
+    # If there's only one row, axs will not be a 2D array, so we need to handle that case
+    if num_rows == 1:
+        axs = np.expand_dims(axs, axis=0)
+    
+    # Flatten axs to iterate easily if the number of plots is less than the grid size
+    axs = axs.flatten()
 
-    # Create a figure with a 2x3 grid of subplots (2 rows, 3 columns)
-    fig, axs = plt.subplots(2, 3, figsize=(18, 12))  # Adjust the figure size as needed
-
-    # Plot each sample in the appropriate subplot
-    plt.sca(axs[0, 0])  # Set the current axes to the first subplot
-    k = max(4,np.max(np.abs(MH_fixed_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    MH_fixed_samples.plot_pair(ax=axs[0, 0])
-    axs[0, 0].set_title('MH Fixed Samples')
-
-    plt.sca(axs[0, 1])  # Set the current axes to the second subplot
-    k = max(4,np.max(np.abs(MH_adapted_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    MH_adapted_samples.plot_pair(ax=axs[0, 1])
-    axs[0, 1].set_title('MH Adapted Samples')
-
-    plt.sca(axs[0, 2])  # Set the current axes to the third subplot
-    k = max(4,np.max(np.abs(ULA_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    ULA_samples.plot_pair(ax=axs[0, 2])
-    axs[0, 2].set_title('ULA Samples')
-
-    plt.sca(axs[1, 0])  # Set the current axes to the fourth subplot
-    k = max(4,np.max(np.abs(MALA_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    MALA_samples.plot_pair(ax=axs[1, 0])
-    axs[1, 0].set_title('MALA Samples')
-
-    plt.sca(axs[1, 1])  # Set the current axes to the fifth subplot
-    k = max(4,np.max(np.abs(NUTS_samples.samples)))
-    plot_pdf_2D(target, -k, k, -k, k)
-    NUTS_samples.plot_pair(ax=axs[1, 1])
-    axs[1, 1].set_title('NUTS Samples')
-
-    # Hide the empty subplot (bottom right) if there are fewer than 6 plots
-    fig.delaxes(axs[1, 2])
-
+    # Loop through each selected method and plot the corresponding samples
+    for i, method in enumerate(selected_methods):
+        k = max(4, np.max(np.abs(samples[method].samples)))
+        
+        # Set the current axes to the correct subplot
+        plt.sca(axs[i])
+        
+        # Plot the target distribution first
+        plot_pdf_2D(target, -k, k, -k, k)
+        
+        # Plot the MCMC samples on top of the target distribution
+        samples[method].plot_pair(ax=axs[i])
+        
+        axs[i].set_title(f'{method.replace("_", " ").title()} Samples')
+    
+    # Hide any unused subplots if fewer methods are selected
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+    
     # Adjust layout to prevent overlap
     plt.tight_layout()
     plt.close(fig)
 
-    return fig,  axs
+    return fig, axs
 
 #%%
 def print_table(df):
