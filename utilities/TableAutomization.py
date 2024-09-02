@@ -226,7 +226,7 @@ def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2
         "Samples": [Ns[i] for i in range(len(selected_methods))],
         "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
         #"Scale": [scale[i] for i in  range(len(selected_methods))]
-        "Scale": [scale[i] if i != len(selected_methods) - 1 else math.nan for i in range(len(selected_methods))]
+        "Scale": [scale[i] if selected_methods[i] != 'NUTS' else math.nan for i in range(len(selected_methods))]
 
 
     }
