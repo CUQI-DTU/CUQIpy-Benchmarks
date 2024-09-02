@@ -158,7 +158,7 @@ def compute_AR(samples):
     ar = {}
 
     for method in samples.keys():
-        if method == 'NUTS':
+        if method == 'NUTS' or method == 'CWMH':
             ar[method] = len(np.unique(samples[method].samples[0])) / len(samples[method].samples[0])
         else:
             ar[method] = samples[method].acc_rate
