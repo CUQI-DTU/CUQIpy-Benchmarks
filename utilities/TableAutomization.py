@@ -15,6 +15,7 @@ import cProfile, pstats, io
 from pstats import SortKey
 from prettytable import PrettyTable
 from IPython.display import Image, display
+import math
 
 # %% General MCMC sampling function
 def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
@@ -61,7 +62,7 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
+def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "MH_adapted","CWMH", "ULA", "MALA", "NUTS"]):
 
     """
     Precompute samples for various MCMC methods and return the results.
@@ -99,7 +100,8 @@ def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods
     # Dictionary to map method names to their corresponding parameters and functions
     method_mapping = {
         'MH_fixed': (MH, False),
-        'CWMH': (MH, True),
+        'MH_adapted': (MH, True),
+        'CWMH': (CWMH, False),
         'ULA': (ULA, False),
         'MALA': (MALA, False),
         'NUTS': (NUTS, False)
@@ -198,7 +200,7 @@ def compute_Rhat(samples, data):
     return rhat
 
 
-def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods = ["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
+def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "MH_adapted","CWMH", "ULA", "MALA", "NUTS"]):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -225,7 +227,10 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
         "Method": selected_methods,
         "Samples": [Ns[i] for i in range(len(selected_methods))],
         "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
-        "Scale": [scale[i] for i in  range(len(selected_methods))]
+        #"Scale": [scale[i] for i in  range(len(selected_methods))]
+        "Scale": [scale[i] if i != len(selected_methods) - 1 else math.nan for i in range(len(selected_methods))]
+
+
     }
 
     # Conditionally compute and add the selected metrics to the DataFrame dictionary
@@ -255,7 +260,7 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
         if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
             data = []
             for i in range(chains - 1):
-                chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
+                chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, i, selected_methods)
                 data.append(chain_samples)
             rhat = compute_Rhat(samples, data)
             df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
