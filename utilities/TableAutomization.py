@@ -255,7 +255,7 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
         if hasattr(x0, '__module__') and x0.__module__.startswith("cuqi.distribution"):
             data = []
             for i in range(chains - 1):
-                chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
+                chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, i, selected_methods)
                 data.append(chain_samples)
             rhat = compute_Rhat(samples, data)
             df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
