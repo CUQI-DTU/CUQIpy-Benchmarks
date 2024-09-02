@@ -196,7 +196,9 @@ def compute_Rhat(samples, data):
     return rhat
 
 
+
 def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
+
     """
     Create a table comparing various sampling methods with ESS values.
     
