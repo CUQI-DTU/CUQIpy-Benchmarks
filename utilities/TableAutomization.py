@@ -15,6 +15,7 @@ import cProfile, pstats, io
 from pstats import SortKey
 from prettytable import PrettyTable
 from IPython.display import Image, display
+import math
 
 # %% General MCMC sampling function
 def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
@@ -43,25 +44,21 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     pr.enable()
     try:
         np.random.seed(seed)
-        
-        if method == MH:
-            sampler = method(target=target, scale=scale, x0=x0)
-            if adapted:
-                x = sampler.sample_adapt(Ns, Nb)
-            else:
-                x = sampler.sample(Ns, Nb)
-        elif method == NUTS:
-            sampler = method(target, x0)
-            x = sampler.sample(Ns, Nb)
+        if method == NUTS: 
+            sampler = method(target = target, x0 = x0)
         else:
-            sampler = method(target, scale, x0)
-            x = sampler.sample(Ns, Nb)
+            sampler = method(target = target, scale = scale, x0 = x0)
+        if adapted:
+            x = sampler.sample_adapt(Ns,Nb)
+        else: 
+            x = sampler.sample(Ns,Nb)
+
     finally:
         pr.disable()
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed",  "CWMH" ,"ULA", "MALA", "NUTS"]):
 
     """
     Precompute samples for various MCMC methods and return the results.
@@ -100,6 +97,7 @@ def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods
     method_mapping = {
         'MH_fixed': (MH, False),
         'MH_adapted': (MH, True),
+        'CWMH': (CWMH, False),
         'ULA': (ULA, False),
         'MALA': (MALA, False),
         'NUTS': (NUTS, False)
@@ -198,7 +196,7 @@ def compute_Rhat(samples, data):
     return rhat
 
 
-def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
     """
     Create a table comparing various sampling methods with ESS values.
     
@@ -225,7 +223,10 @@ def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2
         "Method": selected_methods,
         "Samples": [Ns[i] for i in range(len(selected_methods))],
         "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
-        "Scale": [scale[i] for i in  range(len(selected_methods))]
+        #"Scale": [scale[i] for i in  range(len(selected_methods))]
+        "Scale": [scale[i] if i != len(selected_methods) - 1 else math.nan for i in range(len(selected_methods))]
+
+
     }
 
     # Conditionally compute and add the selected metrics to the DataFrame dictionary
