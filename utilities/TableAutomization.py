@@ -61,7 +61,7 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
 
     """
     Precompute samples for various MCMC methods and return the results.
@@ -99,7 +99,7 @@ def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods
     # Dictionary to map method names to their corresponding parameters and functions
     method_mapping = {
         'MH_fixed': (MH, False),
-        'MH_adapted': (MH, True),
+        'CWMH': (MH, True),
         'ULA': (ULA, False),
         'MALA': (MALA, False),
         'NUTS': (NUTS, False)
@@ -198,7 +198,7 @@ def compute_Rhat(samples, data):
     return rhat
 
 
-def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods = ["MH_fixed", "MH_adapted", "ULA", "MALA", "NUTS"]):
+def create_comparison(target, scale , Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods = ["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
     """
     Create a table comparing various sampling methods with ESS values.
     
