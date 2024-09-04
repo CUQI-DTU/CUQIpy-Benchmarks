@@ -1,5 +1,5 @@
 import numpy as np
-from cuqi.distribution import Distribution, DistributionGallery, Gaussian, JointDistribution, UserDefinedDistribution
+from cuqi.distribution import Gaussian
 from ._benchmarks import Benchmarks
 
 class Banana(Benchmarks):

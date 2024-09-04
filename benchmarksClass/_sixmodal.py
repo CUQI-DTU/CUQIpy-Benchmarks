@@ -1,5 +1,5 @@
 import numpy as np
-from cuqi.distribution import Distribution, DistributionGallery, Gaussian, JointDistribution, UserDefinedDistribution
+# from cuqi.distribution import Distribution, DistributionGallery, Gaussian, JointDistribution, UserDefinedDistribution
 from ._benchmarks import Benchmarks
 
 class Sixmodal(Benchmarks):
