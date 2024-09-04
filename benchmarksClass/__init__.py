@@ -1,6 +1,7 @@
 # from ._distribution import Distribution
 from ._benchmarks import Benchmarks
-from ._donut import donut 
+from ._donut import Donut 
+from ._banana import Banana
 # from ._beta import Beta
 # from ._cauchy import Cauchy
 # from ._cmrf import CMRF
