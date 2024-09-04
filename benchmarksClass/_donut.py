@@ -1,8 +1,7 @@
 import numpy as np
-from cuqi.distribution import Distribution, DistributionGallery, Gaussian, JointDistribution, UserDefinedDistribution
 from ._benchmarks import Benchmarks
 
-class donut(Benchmarks):
+class Donut(Benchmarks):
   def __init__(self,radius = 2.6,sigma2 = 0.033,**kwargs):
     self.radius = radius
     self.sigma2 = sigma2
