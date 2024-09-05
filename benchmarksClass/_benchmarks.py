@@ -10,7 +10,7 @@ class Benchmarks(UserDefinedDistribution):
             
             elif model_type == "bayesian" :
                 x = prior_distribution
-                y = Gaussian(forward_operator.forward(x),noise)
+                y = model
                 BP = BayesianProblem(y, x)
                 BP.set_data(y = data) 
                 super().__init__(dim = dim, logpdf_func = BP.posterior.logpdf, gradient_func = BP.posterior.gradient, **kwargs)
