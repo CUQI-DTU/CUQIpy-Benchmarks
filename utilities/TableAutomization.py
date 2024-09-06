@@ -152,9 +152,9 @@ def compute_ESS(samples, dim):
         ess_values[method] = samples[method].compute_ess()
         if dim > 2:
             ess[method] = {
-                'max': np.max(ess_values),
-                'min': np.min(ess_values),
-                'mean': np.mean(ess_values)
+                'max': np.max(ess_values[method]),
+                'min': np.min(ess_values[method]),
+                # 'mean': np.mean(ess_values)
             }
         else:
             ess = ess_values 
@@ -203,11 +203,11 @@ def compute_Rhat(samples, data, dim):
 
     for method in samples.keys():
         rhat_values[method] = samples[method].compute_rhat([item[method] for item in data])
-        if dim > 2: 
+        if dim ==3: 
             rhat[method] = {
-                'max': np.max(rhat_values),
-                'min': np.min(rhat_values),
-                'mean': np.mean(rhat_values)
+                'max': np.max(rhat_values[method]),
+                'min': np.min(rhat_values[method]),
+                # 'mean': np.mean(rhat_values)
             }
         else:
             rhat = rhat_values
@@ -258,9 +258,9 @@ def create_comparison(dim, target , scale, Ns, Nb , x0 = None, seed =None, chain
             df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
             df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
         else: 
-            df_dict["ESS(max)"] = [safe_access(ess[method], 0) for method in selected_methods]
-            df_dict["ESS(min)"] = [safe_access(ess[method], 1) for method in selected_methods]
-            df_dict["ESS(mean)"] = [safe_access(ess[method], 2) for method in selected_methods]
+            df_dict["ESS(max)"] = [safe_access(ess[method]['max']) for method in selected_methods]
+            df_dict["ESS(min)"] = [safe_access(ess[method]['min']) for method in selected_methods]
+            # df_dict["ESS(mean)"] = [safe_access(ess[method], 2) for method in selected_methods]
 
     if "AR" in selected_criteria:
         ar = compute_AR(samples)
@@ -292,9 +292,9 @@ def create_comparison(dim, target , scale, Ns, Nb , x0 = None, seed =None, chain
                 df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
                 df_dict["Rhat(v1)"] = [safe_access(rhat[method], 1) for method in selected_methods]
             else:
-                df_dict["Rhat(max)"] = [safe_access(rhat[method], 0) for method in selected_methods]
-                df_dict["Rhat(min)"] = [safe_access(rhat[method], 1) for method in selected_methods]
-                df_dict["Rhat(mean)"] = [safe_access(rhat[method], 2) for method in selected_methods]
+                df_dict["Rhat(max)"] = [safe_access(rhat[method]['max']) for method in selected_methods]
+                df_dict["Rhat(min)"] = [safe_access(rhat[method]['min']) for method in selected_methods]
+                # df_dict["Rhat(mean)"] = [safe_access(rhat[method], 2) for method in selected_methods]
 
      # Create the DataFrame
     df = pd.DataFrame(df_dict)
