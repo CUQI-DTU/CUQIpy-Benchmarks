@@ -9,6 +9,6 @@ class SimplestBip(Benchmarks):
     x = Gaussian(np.zeros(dim), 2.5)
     A = LinearModel(matrix)
     y = Gaussian(A.forward(x),noise)
-    super().__init__(model_type = "bayesian", dim = dim, prior_distribution = x,model = y,  noise = noise, forward_operator = A, data = data,**kwargs)
+    super().__init__(model_type = "bayesian", dim = dim, prior_distribution = x,model = y, data = data,**kwargs)
   
   

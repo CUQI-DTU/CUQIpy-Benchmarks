@@ -1,14 +1,31 @@
 import numpy as np
+import cuqi 
 from cuqi.distribution import Distribution, DistributionGallery, Gaussian, JointDistribution, UserDefinedDistribution
-from cuqi.model import LinearModel
 from cuqi.problem import BayesianProblem
 from ._benchmarks import Benchmarks
 
 class HeatStep(Benchmarks):
-  def __init__(self,dim = 3, matrix = np.array([[1.0, 1.0]]),noise = 0.1,data = 3,**kwargs):
-    x = Gaussian(np.zeros(dim), 2.5)
-    A = LinearModel(matrix)
-    y = Gaussian(A.forward(x),noise)
-    super().__init__(model_type = "bayesian", dim = dim, prior_distribution = x, model = y,  noise = noise, forward_operator = A, data = data,**kwargs)
+  def __init__(self,steps=3,nodes = 30, t_max = 0.02**kwargs):
+    data = cuqi.array.CUQIarray(np.load("data/data_heat.npy"))
+    
+    model, _, _ = Heat1D(
+        dim=nodes,
+        endpoint=1,
+        max_time=t_max,
+        field_type="Step",
+        field_params={"n_steps": steps},
+    ).get_components()
+
+    mean = 0
+    std = 1.2
+    x = Gaussian(mean, std**2, geometry=model.domain_geometry)
+
+    sigma_noise = 0.02
+    y = Gaussian(mean=model(x), cov=sigma_noise**2, geometry=model.range_geometry)
+
+    
+
+
+    super().__init__(model_type = "bayesian", dim = steps, prior_distribution = x, model = y,  data = data,**kwargs)
   
   
