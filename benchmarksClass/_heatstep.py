@@ -1,12 +1,22 @@
+import os
 import numpy as np
 import cuqi 
 from cuqi.distribution import Distribution, DistributionGallery, Gaussian, JointDistribution, UserDefinedDistribution
 from cuqi.problem import BayesianProblem
 from ._benchmarks import Benchmarks
+from cuqi.testproblem import Heat1D
 
 class HeatStep(Benchmarks):
-  def __init__(self,steps=3,nodes = 30, t_max = 0.02**kwargs):
-    data = cuqi.array.CUQIarray(np.load("data/data_heat.npy"))
+  def __init__(self,steps=3,nodes = 30, t_max = 0.02,**kwargs):
+
+    # Get the absolute path to the project directory
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(project_dir, 'data', 'data_heat.npy')
+
+    # Load the data
+    data = cuqi.array.CUQIarray(np.load(file_path))
+
+    # data = cuqi.array.CUQIarray(np.load("data/data_heat.npy"))
     
     model, _, _ = Heat1D(
         dim=nodes,
