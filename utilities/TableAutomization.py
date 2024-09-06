@@ -157,7 +157,7 @@ def compute_ESS(samples, dim):
                 'mean': np.mean(ess_values)
             }
         else:
-            ess[method] = ess_values 
+            ess = ess_values 
     
     return ess
 
@@ -251,9 +251,9 @@ def create_comparison(dim, target , scale, Ns, Nb , x0 = None, seed =None, chain
 
     # Conditionally compute and add the selected metrics to the DataFrame dictionary
     if "ESS" in selected_criteria:
-        ess = compute_ESS(samples)
+        ess = compute_ESS(samples, dim)
         if dim ==1: 
-            df_dict["ESS"] = [ess[method] for method in selected_methods]
+            df_dict["ESS"] = [safe_access(ess[method].item()) for method in selected_methods]
         elif dim == 2: 
             df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
             df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
@@ -285,7 +285,7 @@ def create_comparison(dim, target , scale, Ns, Nb , x0 = None, seed =None, chain
             for i in range(chains - 1):
                 chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, i, selected_methods)
                 data.append(chain_samples)
-            rhat = compute_Rhat(samples, data)
+            rhat = compute_Rhat(samples, data, dim)
             if dim == 1: 
                 df_dict["Rhat"] = [rhat[method] for method in selected_methods]
             elif dim == 2: 
@@ -304,12 +304,12 @@ def create_comparison(dim, target , scale, Ns, Nb , x0 = None, seed =None, chain
 
     if dim !=2:
         return df
-    
-    # Generate sampling plot
-    plot = plot_sampling(samples, target, selected_methods)   
+    else: 
+        # Generate sampling plot
+        plot = plot_sampling(samples, target, selected_methods)   
 
-    # Display the DataFrame without the index
-    return df, plot
+        # Display the DataFrame without the index
+        return df, plot
 
 #%%
 #plotting function 
