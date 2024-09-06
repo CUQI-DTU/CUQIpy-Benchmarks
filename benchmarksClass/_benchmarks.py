@@ -9,8 +9,8 @@ class Benchmarks(UserDefinedDistribution):
                 super().__init__(dim = dim,logpdf_func = log_pdf, gradient_func = grad_logpdf, **kwargs)
             
             elif model_type == "bayesian" :
-                x = prior_distribution
+                self.x0 = prior_distribution
                 y = model
-                BP = BayesianProblem(y, x)
+                BP = BayesianProblem(y, self.x0)
                 BP.set_data(y = data) 
                 super().__init__(dim = dim, logpdf_func = BP.posterior.logpdf, gradient_func = BP.posterior.gradient, **kwargs)
