@@ -13,4 +13,5 @@ class Benchmarks(UserDefinedDistribution):
                 y = model
                 BP = BayesianProblem(y, self.x0)
                 BP.set_data(y = data) 
+                # here we neeed to condition when we don't have gradient
                 super().__init__(dim = dim, logpdf_func = BP.posterior.logpdf, gradient_func = BP.posterior.gradient, **kwargs)
