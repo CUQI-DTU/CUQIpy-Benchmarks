@@ -36,6 +36,6 @@ class HeatStep(Benchmarks):
     
 
 
-    super().__init__(model_type = "bayesian", dim = steps, prior_distribution = x, model = y,  data = data,**kwargs)
+    super().__init__(model_type = "bayesian", dim = steps, prior_distribution = x, model = y,  data = data, finite_gradient = True,**kwargs)
   
   
