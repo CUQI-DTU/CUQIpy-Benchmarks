@@ -8,8 +8,14 @@ To run the benchmarks, you need Python 3.7 or higher and the latest version of C
 ```bash
 pip install cuqipy
 ```
+Additionally you need to install prettytable to show tables in notebooks.
 
-Clone this repository to your local machine:
+```bash
+conda install prettytable
+```
+Click Release and download Source code (zip) and open it in your environment.
+
+Or clone this repository to your local machine:
 
 ```bash
 git clone https://github.com/CUQI-DTU/CUQIpy-Benchmarks.git
