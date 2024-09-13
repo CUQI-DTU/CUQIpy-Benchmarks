@@ -45,9 +45,21 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     try:
         np.random.seed(seed)
         if method == NUTS: 
+            # sampler = method(target = target, x0 = x0)
             sampler = method(target = target, x0 = x0)
+            # \x = xamsampler.warmup(Nb)
+            # sampler.sample(Ns)
+            # x = sampler.get_samples()\\\\\
+        
+        # elif method == MALA:
+        #     sampler = cuqi.experimental.mcmc.MALA(target)
+        #     sampler.warmup(Nb)
+        #     sampler.sample(Ns)
+        #     x = sampler.get_samples()
+
         else:
             sampler = method(target = target, scale = scale, x0 = x0)
+            # Edit here 
         if adapted:
             x = sampler.sample_adapt(Ns,Nb)
         else: 
@@ -143,12 +155,21 @@ def count_function(pr, string):
 
 
 # %% Compute ESS for all sampling methods
-def compute_ESS(samples):
+def compute_ESS(samples, dim):
     """Compute effective sample size (ESS) for the selected sampling methods."""
+    ess_values = {}
     ess = {}
     
     for method in samples.keys():
-        ess[method] = samples[method].compute_ess()
+        ess_values[method] = samples[method].compute_ess()
+        if dim > 2:
+            ess[method] = {
+                'max': np.max(ess_values[method]),
+                'min': np.min(ess_values[method]),
+                # 'mean': np.mean(ess_values)
+            }
+        else:
+            ess = ess_values 
     
     return ess
 
@@ -178,7 +199,7 @@ def safe_access(value, index=None):
 
 
 
-def compute_Rhat(samples, data):
+def compute_Rhat(samples, data, dim):
     """
     Compute Rhat statistic for convergence diagnostics across multiple chains.
     
@@ -190,15 +211,24 @@ def compute_Rhat(samples, data):
     rhat : dict, containing Rhat values for each sampling method
     """
     rhat = {}
+    rhat_values = {}
 
     for method in samples.keys():
-        rhat[method] = samples[method].compute_rhat([item[method] for item in data])
+        rhat_values[method] = samples[method].compute_rhat([item[method] for item in data])
+        if dim ==3: 
+            rhat[method] = {
+                'max': np.max(rhat_values[method]),
+                'min': np.min(rhat_values[method]),
+                # 'mean': np.mean(rhat_values)
+            }
+        else:
+            rhat = rhat_values
 
     return rhat
 
 
 
-def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
+def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
 
     """
     Create a table comparing various sampling methods with ESS values.
@@ -226,7 +256,6 @@ def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2
         "Method": selected_methods,
         "Samples": [Ns[i] for i in range(len(selected_methods))],
         "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
-        #"Scale": [scale[i] for i in  range(len(selected_methods))]
         "Scale": [scale[i] if selected_methods[i] != 'NUTS' else math.nan for i in range(len(selected_methods))]
 
 
@@ -234,9 +263,16 @@ def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2
 
     # Conditionally compute and add the selected metrics to the DataFrame dictionary
     if "ESS" in selected_criteria:
-        ess = compute_ESS(samples)
-        df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
-        df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
+        ess = compute_ESS(samples, dim)
+        if dim ==1: 
+            df_dict["ESS"] = [safe_access(ess[method].item()) for method in selected_methods]
+        elif dim == 2: 
+            df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
+            df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
+        else: 
+            df_dict["ESS(max)"] = [safe_access(ess[method]['max']) for method in selected_methods]
+            df_dict["ESS(min)"] = [safe_access(ess[method]['min']) for method in selected_methods]
+            # df_dict["ESS(mean)"] = [safe_access(ess[method], 2) for method in selected_methods]
 
     if "AR" in selected_criteria:
         ar = compute_AR(samples)
@@ -261,26 +297,31 @@ def create_comparison(target , scale, Ns, Nb , x0 = None, seed =None, chains = 2
             for i in range(chains - 1):
                 chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, i, selected_methods)
                 data.append(chain_samples)
-            rhat = compute_Rhat(samples, data)
-            df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
-            df_dict["Rhat(v1)"] = [safe_access(rhat[method], 1) for method in selected_methods]
+            rhat = compute_Rhat(samples, data, dim)
+            if dim == 1: 
+                df_dict["Rhat"] = [rhat[method] for method in selected_methods]
+            elif dim == 2: 
+                df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
+                df_dict["Rhat(v1)"] = [safe_access(rhat[method], 1) for method in selected_methods]
+            else:
+                df_dict["Rhat(max)"] = [safe_access(rhat[method]['max']) for method in selected_methods]
+                df_dict["Rhat(min)"] = [safe_access(rhat[method]['min']) for method in selected_methods]
+                # df_dict["Rhat(mean)"] = [safe_access(rhat[method], 2) for method in selected_methods]
 
-       
-
-    
-    # Generate sampling plot
-    plot = plot_sampling(samples, target, selected_methods)
-
-    # Initialize the DataFrame dictionary
-    
-    # Create the DataFrame
+     # Create the DataFrame
     df = pd.DataFrame(df_dict)
 
     # Optional: Replace None values with "-"
     df = df.fillna("-")
 
-    # Display the DataFrame without the index
-    return df, plot
+    if dim !=2:
+        return df
+    else: 
+        # Generate sampling plot
+        plot = plot_sampling(samples, target, selected_methods)   
+
+        # Display the DataFrame without the index
+        return df, plot
 
 #%%
 #plotting function 
@@ -335,6 +376,7 @@ def plot_sampling(samples, target, selected_methods):
     # Loop through each selected method and plot the corresponding samples
     for i, method in enumerate(selected_methods):
         k = max(4, np.max(np.abs(samples[method].samples)))
+        # k = max(10, np.max(np.abs(samples[method].samples)))
         
         # Set the current axes to the correct subplot
         plt.sca(axs[i])
