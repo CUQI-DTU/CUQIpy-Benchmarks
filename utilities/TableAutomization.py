@@ -46,10 +46,10 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
         np.random.seed(seed)
         if method == NUTS: 
             # sampler = method(target = target, x0 = x0)
-            sampler = cuqi.experimental.mcmc.NUTS(target)
-            sampler.warmup(Nb)
-            sampler.sample(Ns)
-            x = sampler.get_samples()
+            sampler = method(target = target, x0 = x0)
+            # \x = xamsampler.warmup(Nb)
+            # sampler.sample(Ns)
+            # x = sampler.get_samples()\\\\\
         
         # elif method == MALA:
         #     sampler = cuqi.experimental.mcmc.MALA(target)
@@ -60,10 +60,10 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
         else:
             sampler = method(target = target, scale = scale, x0 = x0)
             # Edit here 
-            if adapted:
-                x = sampler.sample_adapt(Ns,Nb)
-            else: 
-                x = sampler.sample(Ns,Nb)
+        if adapted:
+            x = sampler.sample_adapt(Ns,Nb)
+        else: 
+            x = sampler.sample(Ns,Nb)
 
     finally:
         pr.disable()
