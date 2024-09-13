@@ -33,7 +33,7 @@ The directory structure of this repository is as follows:
 ```plaintext
 CUQIpy-Benchmarks/
 │
-├── benchmarks/
+├── benchmarksClass/
     └── ...
 ├── demos/
 │   ├── table-donut.ipynb        # Jupyter notebook for donut distribution
