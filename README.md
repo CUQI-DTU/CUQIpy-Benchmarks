@@ -53,14 +53,7 @@ __Type 0__ :
 __Type 1__ :
 - inverse problems
 - likelihood, prior and  posterior
-
-
-
-__Type 2__ :
-- PDE-type inverse problems
-- given a fixed likelihood, prior and posterior for the PDE
-- analyzes different sampling methods for a fixed pde problem
-
+- can be PDE problems
 
 
 
