@@ -53,7 +53,7 @@ __Type 0__ :
 __Type 1__ :
 - inverse problems
 - likelihood, prior and  posterior
-- no need for a initial point
+
 
 
 __Type 2__ :
