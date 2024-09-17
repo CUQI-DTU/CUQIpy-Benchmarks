@@ -159,19 +159,21 @@ def compute_ESS(samples, dim):
     """Compute effective sample size (ESS) for the selected sampling methods."""
     ess_values = {}
     ess = {}
-    
+    mean = {}
     for method in samples.keys():
         ess_values[method] = samples[method].compute_ess()
+        mean[method] = np.mean(ess_values[method])
         if dim > 2:
             ess[method] = {
                 'max': np.max(ess_values[method]),
-                'min': np.min(ess_values[method]),
-                # 'mean': np.mean(ess_values)
+                'min': np.min(ess_values[method])
+                # 'mean': np.mean(ess_values[method])
             }
         else:
             ess = ess_values 
     
-    return ess
+    return ess, mean
+
 
 # %% Compute acceptance rate for all sampling methods
 def compute_AR(samples):
@@ -212,14 +214,16 @@ def compute_Rhat(samples, data, dim):
     """
     rhat = {}
     rhat_values = {}
+    mean_rhat ={}
 
     for method in samples.keys():
         rhat_values[method] = samples[method].compute_rhat([item[method] for item in data])
-        if dim ==3: 
+        mean_rhat[method] = np.mean(rhat_values[method]) #havent tested it yet
+        if dim >=3: 
             rhat[method] = {
                 'max': np.max(rhat_values[method]),
                 'min': np.min(rhat_values[method]),
-                # 'mean': np.mean(rhat_values)
+
             }
         else:
             rhat = rhat_values
@@ -263,7 +267,8 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
 
     # Conditionally compute and add the selected metrics to the DataFrame dictionary
     if "ESS" in selected_criteria:
-        ess = compute_ESS(samples, dim)
+        ess, mean = compute_ESS(samples, dim)
+        # mean = compute_meanESS(samples)
         if dim ==1: 
             df_dict["ESS"] = [safe_access(ess[method].item()) for method in selected_methods]
         elif dim == 2: 
@@ -272,7 +277,13 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
         else: 
             df_dict["ESS(max)"] = [safe_access(ess[method]['max']) for method in selected_methods]
             df_dict["ESS(min)"] = [safe_access(ess[method]['min']) for method in selected_methods]
+            df_dict["ESS(mean)"] = [safe_access(mean[method] for method in selected_methods)]
+        
+        # df_dict["ESS(mean)"] = [safe_access(mean[method]) for method in selected_methods]
             # df_dict["ESS(mean)"] = [safe_access(ess[method], 2) for method in selected_methods]
+        # df_dict["ESS(max)"] = [safe_access(ess[method]['max']) for method in selected_methods]
+        # df_dict["ESS(min)"] = [safe_access(ess[method]['min']) for method in selected_methods]
+        # df_dict["ESS(mean)"] = [safe_access(mean_ess[method]) for method in selected_methods]
 
     if "AR" in selected_criteria:
         ar = compute_AR(samples)
@@ -308,7 +319,14 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
                 df_dict["Rhat(min)"] = [safe_access(rhat[method]['min']) for method in selected_methods]
                 # df_dict["Rhat(mean)"] = [safe_access(rhat[method], 2) for method in selected_methods]
 
-     # Create the DataFrame
+    if "ESS" in selected_criteria and "LogPDF" in selected_criteria:
+        
+        df_dict["LogPDF/ESS"] = [safe_access(logpdf[method]/mean[method]) for method in selected_methods]
+    
+    if "ESS" in selected_criteria and "Gradient" in selected_criteria:
+        df_dict["Gradient/ESS"] = [safe_access(gradient[method]/mean[method]) for method in selected_methods]
+
+
     df = pd.DataFrame(df_dict)
 
     # Optional: Replace None values with "-"
