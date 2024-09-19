@@ -70,7 +70,7 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns , Nb , x0=None, seed=12, selected_methods = ["MH_fixed",  "CWMH" ,"ULA", "MALA", "NUTS"]):
+def precompute_samples(target, scale, Ns , Nb , x0=None, seed=12, selected_methods = ["MH",  "CWMH" ,"ULA", "MALA", "NUTS"]):
 
     """
     Precompute samples for various MCMC methods and return the results.
@@ -107,12 +107,17 @@ def precompute_samples(target, scale, Ns , Nb , x0=None, seed=12, selected_metho
     
     # Dictionary to map method names to their corresponding parameters and functions
     method_mapping = {
-        'MH_fixed': (MH, False),
+        'MH': (MH, False),
         'MH_adapted': (MH, True),
         'CWMH': (CWMH, False),
+        'CWMH_adapted': (CWMH, True),
         'ULA': (ULA, False),
+        'ULA_adapted': (ULA, True),
         'MALA': (MALA, False),
-        'NUTS': (NUTS, False)
+        'MALA_adapted': (MALA, True),
+        'NUTS': (NUTS, False),
+        'NUTS_adapted': (NUTS, True)
+
     }
 
     # Loop over selected methods and compute samples
@@ -347,7 +352,7 @@ def compute_Rhat(samples, data, dim):
 #         return df, plot
 
 
-def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
+def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH", "CWMH", "ULA", "MALA", "NUTS"]):
 
     """
     Create a table comparing various sampling methods with ESS values.
@@ -377,7 +382,9 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
     for idx, method in enumerate(selected_methods):
         df_dict[method]["samples"] = int(Ns[idx])
         df_dict[method]["burnins"] = int(Nb[idx])
-        df_dict[method]["scale"] = scale[idx]
+        if method == "NUTS" or method == "NUTS_adapted":
+            df_dict[method]["scale"] = "-"
+        else: df_dict[method]["scale"] = scale[idx]
 
     if "ESS" in selected_criteria:
 
@@ -404,7 +411,7 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
         logpdf = count_function(pr, "logpdf")
         for method in selected_methods:
             df_dict[method]["LogPDF"] = int(logpdf[method]) #make them nice
-            # df_dict[method]['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict[method]['LogPDF']]
+            
     
     
     if "Gradient" in selected_criteria:
@@ -436,9 +443,14 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
     
     df = pd.DataFrame(df_dict)
 
-    
-    df = df.fillna("-")
-
+    # df_style = df.style.format({
+    #     'ULA': '{:.0f}' for 'samples',  # Display samples as integers
+    #     'burnins': '{:.0f}',  # Display burn-ins as integers
+    #     'LogPDF': '{:.0f}',   # Display LogPDF as integers
+    #     'Gradient': '{:.0f}'  # Display Gradient as integers
+    # })
+    # df = df.fillna("-")
+    # df = pd.DataFr?ame(df_style)
     if dim !=2:
         return df
     else: 
