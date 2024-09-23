@@ -16,6 +16,7 @@ from pstats import SortKey
 from prettytable import PrettyTable
 from IPython.display import Image, display
 import math
+import warnings
 
 # %% General MCMC sampling function
 def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
@@ -70,7 +71,7 @@ def MCMC_sampling(target, method, adapted, scale, Ns, Nb, x0=None, seed=None):
     return x, pr
 
 # %% Precompute samples function
-def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods = ["MH_fixed",  "CWMH" ,"ULA", "MALA", "NUTS"]):
+def precompute_samples(target, scale, Ns , Nb , x0=None, seed=12, selected_methods = ["MH",  "CWMH" ,"ULA", "MALA", "NUTS"]):
 
     """
     Precompute samples for various MCMC methods and return the results.
@@ -98,21 +99,26 @@ def precompute_samples(target, scale, Ns, Nb, x0=None, seed=12, selected_methods
     if isinstance(scale, float):
         scale = np.full(len(selected_methods), scale)
     if isinstance(Ns, int):
-        Ns = np.full(len(selected_methods), Ns)
+        Ns = np.full(len(selected_methods), int(Ns))
     if isinstance(Nb, int):
-        Nb = np.full(len(selected_methods), Nb)
+        Nb = np.full(len(selected_methods), int(Nb))
     
     samples = {}
     pr = {}
     
     # Dictionary to map method names to their corresponding parameters and functions
     method_mapping = {
-        'MH_fixed': (MH, False),
+        'MH': (MH, False),
         'MH_adapted': (MH, True),
         'CWMH': (CWMH, False),
+        'CWMH_adapted': (CWMH, True),
         'ULA': (ULA, False),
+        'ULA_adapted': (ULA, True),
         'MALA': (MALA, False),
-        'NUTS': (NUTS, False)
+        'MALA_adapted': (MALA, True),
+        'NUTS': (NUTS, False),
+        'NUTS_adapted': (NUTS, True)
+
     }
 
     # Loop over selected methods and compute samples
@@ -159,19 +165,21 @@ def compute_ESS(samples, dim):
     """Compute effective sample size (ESS) for the selected sampling methods."""
     ess_values = {}
     ess = {}
-    
+    mean = {}
     for method in samples.keys():
         ess_values[method] = samples[method].compute_ess()
+        mean[method] = np.mean(ess_values[method])
         if dim > 2:
             ess[method] = {
                 'max': np.max(ess_values[method]),
-                'min': np.min(ess_values[method]),
-                # 'mean': np.mean(ess_values)
+                'min': np.min(ess_values[method])
+                # 'mean': np.mean(ess_values[method])
             }
         else:
             ess = ess_values 
     
-    return ess
+    return ess, mean
+
 
 # %% Compute acceptance rate for all sampling methods
 def compute_AR(samples):
@@ -180,7 +188,7 @@ def compute_AR(samples):
 
     for method in samples.keys():
 
-        if method == 'NUTS' or 'CWMH':
+        if method == 'NUTS' or 'CWMH' or 'NUTS_adapted' or 'CWMH_adapted':
             ar[method] = len(np.unique(samples[method].samples[0])) / len(samples[method].samples[0])
         else:
             ar[method] = samples[method].acc_rate
@@ -190,14 +198,19 @@ def compute_AR(samples):
 
 # %% Utility function to safely access array elements
 def safe_access(value, index=None):
-    """Round the element at the specified index or the scalar value to 3 decimals."""
+    """Safely access the value at the specified index or the scalar value and format integers."""
     if isinstance(value, (list, np.ndarray)):
-        return round(value[index], 3)
+        accessed_value = value[index]
     else:
-        return round(value, 3)
+        accessed_value = value
 
+    # If the value is an integer or a whole number, return it as an int, otherwise round to 3 decimals
+    if isinstance(accessed_value, (int, np.integer)) or accessed_value.is_integer():
+        return int(accessed_value)
+    else:
+        return round(accessed_value, 3)
 
-
+#%%
 
 def compute_Rhat(samples, data, dim):
     """
@@ -212,23 +225,25 @@ def compute_Rhat(samples, data, dim):
     """
     rhat = {}
     rhat_values = {}
+    mean_rhat ={}
 
     for method in samples.keys():
         rhat_values[method] = samples[method].compute_rhat([item[method] for item in data])
-        if dim ==3: 
+        mean_rhat[method] = np.mean(rhat_values[method]) #havent tested it yet
+        if dim >=3: 
             rhat[method] = {
                 'max': np.max(rhat_values[method]),
                 'min': np.min(rhat_values[method]),
-                # 'mean': np.mean(rhat_values)
+
             }
         else:
             rhat = rhat_values
 
     return rhat
 
+# %%
 
-
-def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH_fixed", "CWMH", "ULA", "MALA", "NUTS"]):
+def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria= ["ESS", "AR", "LogPDF", "Gradient","Rhat"], selected_methods =["MH", "CWMH", "ULA", "MALA", "NUTS"]):
 
     """
     Create a table comparing various sampling methods with ESS values.
@@ -251,43 +266,50 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
 
     # Run precomputation
     samples, pr,  scale, Ns, Nb = precompute_samples(target, scale, Ns, Nb, x0, seed, selected_methods)
+    df_dict ={}
+    for method in selected_methods:
+        df_dict[method] ={}
 
-    df_dict = {
-        "Method": selected_methods,
-        "Samples": [Ns[i] for i in range(len(selected_methods))],
-        "Burn-ins": [Nb[i] for i in  range(len(selected_methods))],
-        "Scale": [scale[i] if selected_methods[i] != 'NUTS' else math.nan for i in range(len(selected_methods))]
+    for idx, method in enumerate(selected_methods):
+        df_dict[method]["samples"] = int(Ns[idx])
+        df_dict[method]["burnins"] = int(Nb[idx])
+        if method == "NUTS" or method == "NUTS_adapted":
+            df_dict[method]["scale"] = "-"
+        else: df_dict[method]["scale"] = scale[idx]
 
-
-    }
-
-    # Conditionally compute and add the selected metrics to the DataFrame dictionary
     if "ESS" in selected_criteria:
-        ess = compute_ESS(samples, dim)
-        if dim ==1: 
-            df_dict["ESS"] = [safe_access(ess[method].item()) for method in selected_methods]
-        elif dim == 2: 
-            df_dict["ESS(v0)"] = [safe_access(ess[method], 0) for method in selected_methods]
-            df_dict["ESS(v1)"] = [safe_access(ess[method], 1) for method in selected_methods]
-        else: 
-            df_dict["ESS(max)"] = [safe_access(ess[method]['max']) for method in selected_methods]
-            df_dict["ESS(min)"] = [safe_access(ess[method]['min']) for method in selected_methods]
-            # df_dict["ESS(mean)"] = [safe_access(ess[method], 2) for method in selected_methods]
 
+        ess, mean = compute_ESS(samples, dim)
+        # mean = compute_meanESS(samples)  
+        if dim ==1: 
+            for method in selected_methods:
+                df_dict[method]["ESS"] = safe_access(ess[method].item())
+        elif dim == 2:
+            for method in selected_methods: 
+                df_dict[method]["ESS(v0)"] = safe_access(ess[method], 0)
+                df_dict[method]["ESS(v1)"] = safe_access(ess[method], 1)
+        else: 
+            for method in selected_methods: 
+                df_dict[method]["ESS(max)"] = safe_access(ess[method]['max'])
+                df_dict[method]["ESS(min)"] = safe_access(ess[method]['min'])
+                df_dict[method]["ESS(mean)"] = safe_access(mean[method])
     if "AR" in selected_criteria:
         ar = compute_AR(samples)
-        df_dict["AR"] = [safe_access(ar[method]) for method in selected_methods]
+        for method in selected_methods:
+            df_dict[method]["AR"] = safe_access(ar[method])
 
     if "LogPDF" in selected_criteria:
         logpdf = count_function(pr, "logpdf")
-        df_dict["LogPDF"] = [logpdf[method] for method in selected_methods]
-        df_dict['LogPDF'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['LogPDF']]
+        for method in selected_methods:
+            df_dict[method]["LogPDF"] = int(logpdf[method]) #make them nice
+            
     
     
     if "Gradient" in selected_criteria:
         gradient = count_function(pr, "_gradient")
-        df_dict["Gradient"] = [gradient[method] for method in selected_methods]
-        df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
+        for method in selected_methods:
+            df_dict[method]["Gradient"] = int(gradient[method]) #make them nice
+            # df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
     if "Rhat" in selected_criteria:
         if hasattr(target,'prior'):
@@ -298,21 +320,34 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
                 chain_samples, _, _, _, _ = precompute_samples(target, scale, Ns, Nb, x0, i, selected_methods)
                 data.append(chain_samples)
             rhat = compute_Rhat(samples, data, dim)
-            if dim == 1: 
-                df_dict["Rhat"] = [rhat[method] for method in selected_methods]
-            elif dim == 2: 
-                df_dict["Rhat(v0)"] = [safe_access(rhat[method], 0) for method in selected_methods]
-                df_dict["Rhat(v1)"] = [safe_access(rhat[method], 1) for method in selected_methods]
+            if dim == 1:
+                for method in selected_methods: 
+                    df_dict[method]["Rhat"] = rhat[method]
+            elif dim == 2:
+                for method in selected_methods: 
+                    df_dict[method]["Rhat(v0)"] = safe_access(rhat[method], 0)
+                    df_dict[method]["Rhat(v1)"] = safe_access(rhat[method], 1)
             else:
-                df_dict["Rhat(max)"] = [safe_access(rhat[method]['max']) for method in selected_methods]
-                df_dict["Rhat(min)"] = [safe_access(rhat[method]['min']) for method in selected_methods]
-                # df_dict["Rhat(mean)"] = [safe_access(rhat[method], 2) for method in selected_methods]
+                for method in selected_methods:
+                    df_dict[method]["Rhat(max)"] = safe_access(rhat[method]['max'])
+                    df_dict[method]["Rhat(min)"] = safe_access(rhat[method]['min'])
+    if "ESS" in selected_criteria and "LogPDF" in selected_criteria:
+        for method in selected_methods:
+            df_dict[method]["LogPDF/ESS"] = safe_access(logpdf[method]/mean[method])
+    
+    if "ESS" in selected_criteria and "Gradient" in selected_criteria:
+        for method in selected_methods:
+            df_dict[method]["Gradient/ESS"] = safe_access(gradient[method]/mean[method])
 
-     # Create the DataFrame
     df = pd.DataFrame(df_dict)
-
-    # Optional: Replace None values with "-"
-    df = df.fillna("-")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        df.loc['samples'] = df.loc['samples'].apply(lambda x: f"{x:.0f}")
+        df.loc['burnins'] = df.loc['burnins'].apply(lambda x: f"{x:.0f}")
+        if "LogPDF" in selected_criteria:
+            df.loc['LogPDF'] = df.loc['LogPDF'].apply(lambda x: f"{x:.0f}")
+        if "Gradient" in selected_criteria:
+            df.loc['Gradient'] = df.loc['Gradient'].apply(lambda x: f"{x:.0f}")
 
     if dim !=2:
         return df
@@ -399,21 +434,7 @@ def plot_sampling(samples, target, selected_methods):
 
     return fig, axs
 
-#%%
-def print_table(df):
-    
-    
 
-    # Create a PrettyTable object
-    table = PrettyTable()
-
-    # Add columns to the table
-    table.field_names = df.columns.tolist()
-    for row in df.itertuples(index=False):
-        table.add_row(row)
-
-    # Print the table
-    print(table)
 
 #%%
 def show_plot(fig):
