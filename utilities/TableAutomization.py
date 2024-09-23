@@ -331,7 +331,14 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
                 for method in selected_methods:
                     df_dict[method]["Rhat(max)"] = safe_access(rhat[method]['max'])
                     df_dict[method]["Rhat(min)"] = safe_access(rhat[method]['min'])
+    if "ESS" in selected_criteria and "LogPDF" in selected_criteria:
+        for method in selected_methods:
+            df_dict[method]["LogPDF/ESS"] = safe_access(logpdf[method]/mean[method])
     
+    if "ESS" in selected_criteria and "Gradient" in selected_criteria:
+        for method in selected_methods:
+            df_dict[method]["Gradient/ESS"] = safe_access(gradient[method]/mean[method])
+
     df = pd.DataFrame(df_dict)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
@@ -342,14 +349,6 @@ def create_comparison( target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, 
         if "Gradient" in selected_criteria:
             df.loc['Gradient'] = df.loc['Gradient'].apply(lambda x: f"{x:.0f}")
 
-    # df_style = df.style.format({
-    #     'ULA': '{:.0f}' for 'samples',  # Display samples as integers
-    #     'burnins': '{:.0f}',  # Display burn-ins as integers
-    #     'LogPDF': '{:.0f}',   # Display LogPDF as integers
-    #     'Gradient': '{:.0f}'  # Display Gradient as integers
-    # })
-    # df = df.fillna("-")
-    # df = pd.DataFr?ame(df_style)
     if dim !=2:
         return df
     else: 
