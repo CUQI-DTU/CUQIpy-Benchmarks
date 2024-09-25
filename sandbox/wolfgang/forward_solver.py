@@ -198,11 +198,8 @@ def forward_solver(theta) :
     # Solve linear equation for coefficients, U, and then
     # get the Z vector by multiplying by the measurement matrix
     u = spsolve(scipy.sparse.csr_matrix(A), b)
-    print(np.shape(u))
-    
-    # z = M * u
-    
-    return u
+    z = M * u
+    return z
 
 
 
