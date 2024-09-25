@@ -17,10 +17,11 @@ from IPython.display import Image, display
 import math
 import warnings
 from ._criteria import Criteria
+from ._plot import Plot
 
-class TableComparison(Criteria):
+class MCMCComparison():
    
-    def __init__(self, target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria =None, selected_methods = None):
+    def __init__(self, target , scale, Ns, Nb , dim = 2, x0 = None, seed =None, chains = 2, selected_criteria =None, selected_methods = None ):
         """
         Initialize the MCMCSampler with a target distribution and parameters.
         
@@ -41,14 +42,24 @@ class TableComparison(Criteria):
         self.Nb = Nb
         self.dim = dim
         self.x0 = x0
+        if hasattr(self.x0, '__module__') and self.x0.__module__.startswith("cuqi.distribution"):
+            self.x0 = self.x0.sample().to_numpy()
+            self.distribution = True
+        elif hasattr(self.target,'prior'):
+                self.x0 = self.target.prior
+                self.distribution = True
+        else: self.distribution = False
+
         self.seed = seed
         self.chains = chains
         self.selected_methods = selected_methods or ["MH", "CWMH", "ULA", "MALA", "NUTS"]
         self.selected_criteria = selected_criteria or ["ESS", "AR", "LogPDF", "Gradient", "Rhat"]
 
         self.sampling_results = {}
+        if hasattr(self.target,'prior'):
+            self.x0 = self.target.prior
     
-    def precompute_samples(self):
+    def precompute_samples(self, save = False):
 
         """
         Precompute samples for various MCMC methods and return the results.
@@ -70,7 +81,7 @@ class TableComparison(Criteria):
         Ns      : array, adjusted number of samples
         Nb      : array, adjusted number of burn-ins
         """
-        np.random.seed(self.seed)
+        np.random.seed(self.seed + self.chains)
         
         
         if isinstance(self.scale, float):
@@ -110,16 +121,16 @@ class TableComparison(Criteria):
             if method in method_mapping:
                 mcmc_method, adapted = method_mapping[method]
                 samples[method], pr[method] = self.MCMC_sampling(mcmc_method, adapted,  self.scale[idx], self.Ns[idx], self.Nb[idx])
-                self.sampling_results[method] = {
-                    "samples": samples[method],
-                    "profiling": pr[method]
-                }
+                if save:
+                    self.sampling_results[method] = {
+                        "samples": samples[method],
+                        "profiling": pr[method]
+                    }
         
         return samples, pr
     
     def MCMC_sampling(self, method, adapted,scale_index, ns_index, nb_index):
-        if hasattr(self.x0, '__module__') and self.x0.__module__.startswith("cuqi.distribution"):
-            self.x0 = self.x0.sample().to_numpy()
+        
 
         pr = cProfile.Profile()
         pr.enable()
@@ -171,7 +182,7 @@ class TableComparison(Criteria):
         """
 
         # Run precomputation
-        samples, pr = self.precompute_samples()
+        samples, pr = self.precompute_samples(True)
         df_dict ={}
         for method in self.selected_methods:
             df_dict[method] ={}
@@ -183,12 +194,11 @@ class TableComparison(Criteria):
                 df_dict[method]["scale"] = "-"
             else: df_dict[method]["scale"] = self.scale[idx]
 
-        super().__init__(samples, pr, self.dim)
-
+        criteria = Criteria(samples, pr, self.dim)
         if "ESS" in self.selected_criteria:
             
 
-            ess, mean = super().compute_ESS()
+            ess, mean = criteria.compute_ESS()
             # mean = compute_meanESS(samples)  
             if self.dim ==1: 
                 for method in self.selected_methods:
@@ -204,33 +214,33 @@ class TableComparison(Criteria):
                     df_dict[method]["ESS(mean)"] = round(mean[method], 3)
         
         if "AR" in self.selected_criteria:
-            ar = super().compute_AR()
+            ar = criteria.compute_AR()
 
             for method in self.selected_methods:
                 df_dict[method]["AR"] = round(ar[method], 3)
 
         if "LogPDF" in self.selected_criteria:
-            logpdf = super().count_function("logpdf")
+            logpdf = criteria.count_function("logpdf")
             for method in self.selected_methods:
                 df_dict[method]["LogPDF"] = int(logpdf[method]) #make them nice
                 
         
         
         if "Gradient" in self.selected_criteria:
-            gradient = super().count_function("_gradient")
+            gradient = criteria.count_function("_gradient")
             for method in self.selected_methods:
                 df_dict[method]["Gradient"] = int(gradient[method]) #make them nice
                 # df_dict['Gradient'] = [int(x) if pd.notnull(x) else '-' for x in df_dict['Gradient']]
 
         if "Rhat" in self.selected_criteria:
-            if hasattr(self.target,'prior'):
-                x0 = self.target.prior
-            if hasattr(self.x0, '__module__') and self.x0.__module__.startswith("cuqi.distribution"):
+            if self.distribution:
                 data = []
                 for i in range(self.chains - 1):
-                    chain_samples, _, _, _, _ = self.precompute_samples()
+                    chain_samples, _ = self.precompute_samples()
                     data.append(chain_samples)
-                rhat = super().compute_Rhat(data)
+                    
+        
+                rhat = criteria.compute_Rhat(data)
                 if self.dim == 1:
                     for method in self.selected_methods: 
                         df_dict[method]["Rhat"] = rhat[method]
@@ -242,6 +252,8 @@ class TableComparison(Criteria):
                     for method in self.selected_methods:
                         df_dict[method]["Rhat(max)"] = round(rhat[method]['max'], 3)
                         df_dict[method]["Rhat(min)"] = round(rhat[method]['min'], 3)
+            
+                
         if "ESS" in self.selected_criteria and "LogPDF" in self.selected_criteria:
             for method in self.selected_methods:
                 df_dict[method]["LogPDF/ESS"] = round(logpdf[method]/mean[method], 3)
@@ -261,5 +273,17 @@ class TableComparison(Criteria):
                 df.loc['Gradient'] = df.loc['Gradient'].apply(lambda x: f"{x:.0f}")
 
         return df
+    
+    def create_plt(self):
+        if self.dim != 2: 
+             raise ValueError(f"Plot of '{self.dim}' cannot be plotted.")
+        else: 
+            a = Plot(self.target, self.sampling_results, self.selected_methods, self.dim)
+            return a.plot_sampling()
+        
+    
 
-   
+    
+    
+
+    

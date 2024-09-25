@@ -110,4 +110,3 @@ class Criteria():
 
         return rhat
 
-
