@@ -37,11 +37,13 @@ CUQIpy-Benchmarks/
 ├── sandbox/
     └── ...
 └── utilities/
-    ├── TableAutomization.py     # Module for automating table generation
+    ├── _mcmcComparison.py     # Module for automating table generation
+    ├── _criteria.py     # Module for automating table generation
+    ├── _plot.py     # Module for automating table generation
     ├── __init__.py              # Init file for the utilities package
 ```
-Using the `utilities/` directory contains helper module `TableAutomization.py` this repository analyses different sampling methods from different points of view. 
-In this context, the definition of a __benchmark__ is a fully specified distribution that can be sampled. There are 3 types of benchmark problems that will be worked on:
+Using the `utilities/` directory contains helper modules . This repository analyses different sampling methods from different points of view. 
+In this context, the definition of a __benchmark__ is a fully specified distribution that can be sampled. There are 2 types of benchmark problems that will be worked on:
 
 __Type 0__ : 
 - simple target distributions
@@ -57,3 +59,4 @@ __Type 1__ :
 
 
 
+[CUQIpy_Benchmarks_Poster.pdf](https://github.com/user-attachments/files/17147237/DTU_Poster_tania_goia.pdf)
