@@ -5,7 +5,7 @@ import cuqi
 import inspect
 import numpy as np
 import matplotlib.pyplot as plt
-from cuqi.sampler import MH, CWMH, ULA, MALA, NUTS
+from cuqi.experimental.mcmc import MHNew as MH, CWMHNew as CWMH, ULANew as ULA, MALANew as MALA, NUTSNew as NUTS
 import time
 import scipy.stats as sps
 from scipy.stats import gaussian_kde
@@ -137,15 +137,17 @@ class MCMCComparison():
         try:
             np.random.seed(self.seed)
             if method == NUTS: 
-                sampler = method(target = self.target, x0 = self.x0)
+                sampler = method(target = self.target, initial_point = self.x0)
 
             else:
-                sampler = method(target = self.target, scale = scale_index, x0 = self.x0)
-                # Edit here 
+                sampler = method(target = self.target, scale = scale_index, initial_point = self.x0)
+            sampler.warmup(nb_index)
+            sampler.sample(ns_index)
             if adapted:
-                x = sampler.sample_adapt(ns_index,nb_index)
+                
+                x = sampler.get_samples.burnthin(nb_index)
             else: 
-                x = sampler.sample(ns_index, nb_index)
+                x = sampler.get_samples()
 
         finally:
             pr.disable()
