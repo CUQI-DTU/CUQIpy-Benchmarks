@@ -22,23 +22,27 @@ class StepExpansion2D(_WrappedGeometry):
 
         import numpy as np
         import matplotlib.pyplot as plt
-        from cuqi.fenics.geometry import MaternKLExpansion, FEniCSContinuous
+        from cuqi.fenics.geometry import StepExpansion2D, FEniCSContinuous
         from cuqi.distribution import Gaussian
         import dolfin as dl
-        
-        mesh = dl.UnitSquareMesh(20,20)
-        V = dl.FunctionSpace(mesh, 'CG', 1)
-        geometry = FEniCSContinuous(V)
-        MaternGeometry = MaternKLExpansion(geometry, 
-                                        length_scale = .2,
-                                        num_terms=128)
-        
-        MaternField = Gaussian(mean=np.zeros(MaternGeometry.dim),
-                        cov=np.eye(MaternGeometry.dim),
-                        geometry= MaternGeometry)
-        
-        samples = MaternField.sample()
+
+
+        mesh = dl.UnitSquareMesh(32,32)
+        V = dl.FunctionSpace(mesh, 'DG', 0)
+
+        grid_x = np.linspace(0, 1, 15)[1:-1]
+        grid_y = np.linspace(0, 1, 15)[1:-1]
+        geometry = FEniCSContinuous(V, labels=['$\\xi_1$', '$\\xi_2$'])
+        StepExpansionGeometry = StepExpansion2D(geometry, 
+                                    num_steps=64)
+
+        StepExpansionField = Gaussian(mean=np.zeros(StepExpansionGeometry.num_steps),
+                    cov=np.eye(StepExpansionGeometry.num_steps),
+                    geometry=StepExpansionGeometry)
+
+        samples = StepExpansionField.sample()
         samples.plot()
+
 
     """
 
