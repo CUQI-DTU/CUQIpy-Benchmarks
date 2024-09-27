@@ -15,4 +15,5 @@ class Benchmarks(UserDefinedDistribution):
                 BP.set_data(y = data) 
                 if finite_gradient == True:
                      BP.posterior.enable_FD()
+                self.posterior = BP.posterior
                 super().__init__(dim = dim, logpdf_func = BP.posterior.logpdf, gradient_func = BP.posterior.gradient, **kwargs)

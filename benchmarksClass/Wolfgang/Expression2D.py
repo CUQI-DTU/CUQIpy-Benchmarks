@@ -1,6 +1,6 @@
 import dolfin as dl
 
-# user expresstion for 1 in the sepcified grid and 0 in the other
+# user expresstion for 1 in the sepcified grid and 0 in the other domain
 class Expression2D(dl.UserExpression):
     def __init__(self, degree, x_lim, y_lim):
         self.x_lim = x_lim
