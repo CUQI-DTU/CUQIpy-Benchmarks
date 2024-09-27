@@ -69,8 +69,9 @@ class Wolfgang(Benchmarks):
                                         num_steps=n_steps)
     # self.range_geometry = FEniCSContinuous(self.solution_function_space,
     #                                   labels=['$\\xi_1$', '$\\xi_2$'])
-    grid_x = np.linspace(0, 1, 15)[1:-1]
-    grid_y = np.linspace(0, 1, 15)[1:-1]
+    val = int(np.sqrt(self.n_obs)) + 2
+    grid_x = np.linspace(0, 1, val)[1:-1]
+    grid_y = np.linspace(0, 1, val)[1:-1]
     self.range_geometry = geometry.Continuous2D((grid_x, grid_y))
     
     
@@ -79,7 +80,7 @@ class Wolfgang(Benchmarks):
     # prior distribution
     mean = 0
     std = 2
-    a = Lognormal(np.zeros(64), std**2, geometry=self.domain_geometry)
+    a = Lognormal(np.zeros(n_steps), std**2, geometry=self.domain_geometry)
 
     # model 
     self.cuqi_model = PDEModel(PDE = self.PDE, domain_geometry=self.domain_geometry, range_geometry=self.range_geometry)
