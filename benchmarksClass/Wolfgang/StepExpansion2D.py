@@ -4,8 +4,6 @@ from cuqi.geometry import _WrappedGeometry
 # import cuqipy_fenics 
 from .Expression2D import Expression2D
 
-dl.set_log_level(3)
-
 
 class StepExpansion2D(_WrappedGeometry):
     """A geometry class that builds spectral representation of step expansion

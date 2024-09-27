@@ -14,12 +14,6 @@ from .._benchmarks import Benchmarks
 from .StepExpansion2D import StepExpansion2D
 
 
-# Set the log level to suppress warnings
-dl.set_log_level(dl.LogLevel.ERROR)
-
-
-
-
 class Wolfgang(Benchmarks):
   def __init__(self,n_steps = 64, n_mesh = 1024, n_obs = 169,**kwargs):
     
