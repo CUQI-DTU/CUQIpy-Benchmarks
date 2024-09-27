@@ -59,7 +59,7 @@ class Wolfgang(Benchmarks):
         parameter_function_space=self.parameter_function_space,
         solution_function_space=self.solution_function_space,
         dirichlet_bcs=dirichlet_bc,
-         adjoint_dirichlet_bcs=adjoint_dirichlet_bc,
+        adjoint_dirichlet_bcs=adjoint_dirichlet_bc,
         observation_operator=self.observation)
     
     # Define CUQI geometry 
