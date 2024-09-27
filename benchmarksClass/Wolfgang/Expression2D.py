@@ -1,5 +1,7 @@
 import dolfin as dl
 
+dl.set_log_level(3)
+
 # user expresstion for 1 in the sepcified grid and 0 in the other
 class Expression2D(dl.UserExpression):
     def __init__(self, degree, x_lim, y_lim):
