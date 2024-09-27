@@ -5,7 +5,7 @@ import cuqi
 import inspect
 import numpy as np
 import matplotlib.pyplot as plt
-from cuqi.experimental.mcmc import MHNew as MH, CWMHNew as CWMH, ULANew as ULA, MALANew as MALA, NUTSNew as NUTS
+from cuqi.experimental.mcmc import MH as MH, CWMH as CWMH, ULA as ULA, MALA as MALA, NUTS as NUTS
 import time
 import scipy.stats as sps
 from scipy.stats import gaussian_kde

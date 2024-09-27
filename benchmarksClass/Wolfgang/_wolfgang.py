@@ -11,7 +11,7 @@ from cuqipy_fenics.geometry import FEniCSContinuous
 import cuqipy_fenics
 ufl = cuqipy_fenics.utilities._LazyUFLLoader()
 from .._benchmarks import Benchmarks
-from .StepExpansion import StepExpansion
+from .StepExpansion2D import StepExpansion2D
 
 class Wolfgang(Benchmarks):
   def __init__(self,n_steps = 64, n_mesh = 1024, n_obs = 169,**kwargs):
@@ -55,7 +55,7 @@ class Wolfgang(Benchmarks):
     # Define CUQI geometry 
     fenics_continuous_geo = FEniCSContinuous(self.parameter_function_space,
                                             labels=['$\\xi_1$', '$\\xi_2$'])
-    self.domain_geometry = StepExpansion(fenics_continuous_geo,
+    self.domain_geometry = StepExpansion2D(fenics_continuous_geo,
                                         num_steps=n_steps)
     # self.range_geometry = FEniCSContinuous(self.solution_function_space,
     #                                   labels=['$\\xi_1$', '$\\xi_2$'])
