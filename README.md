@@ -8,11 +8,7 @@ To run the benchmarks, you need the latest version of CUQIpy installed. Install 
 ```bash
 pip install cuqipy
 ```
-Additionally you need to install prettytable to show tables in notebooks.
 
-```bash
-conda install prettytable
-```
 Click Release and download Source code (zip) and open it in your environment.
 
 Or clone this repository to your local machine:
