@@ -6,14 +6,14 @@ from .Expression2D import Expression2D
 
 
 class StepExpansion2D(_WrappedGeometry):
-    """A geometry class that builds spectral representation of step expansion
+    """A geometry class that builds step expansion in 2D domain
     Parameters
     -----------
     geometry : cuqi.fenics.geometry.Geometry
-        An input geometry on which the Matern field representation is built (the geometry must have a mesh attribute)
+        An input geometry on which the step expansion is built (the geometry must have a mesh attribute)
 
     num_steps: int
-        Number of expansion terms to represent the Matern field realization
+        Number of expansion terms to represent the step expansion realization (the num_steps have must be square of integer)
 
 
     Example
@@ -42,7 +42,7 @@ class StepExpansion2D(_WrappedGeometry):
 
     """
 
-    def __init__(self, geometry, num_steps = 64, normalize=True): 
+    def __init__(self, geometry, num_steps = 64): 
         super().__init__(geometry)
         if not hasattr(geometry, 'mesh'):
             raise NotImplementedError
@@ -93,9 +93,9 @@ class StepExpansion2D(_WrappedGeometry):
         function DOF values) to the function value (FEniCS object)."""
         return self.geometry.vec2fun(funvec)
 
-    # def gradient(self, direction, wrt):
-    #     direction = self.geometry.gradient(direction, wrt)
-    #     return np.diag( np.sqrt(self.eig_val)).T@self.eig_vec.T@direction
+    def gradient(self, direction, wrt):
+        direction = self.geometry.gradient(direction, wrt)
+        return self._step_vec.T@direction
         
     def par2field(self, a):
         """Applies linear transformation of the parameters a to

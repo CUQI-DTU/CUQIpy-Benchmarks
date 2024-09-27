@@ -40,6 +40,12 @@ class Wolfgang(Benchmarks):
     dirichlet_bc = dl.DirichletBC(self.solution_function_space,
                                   dirichlet_bc_expr,
                                   u_boundary) 
+    
+    #adjoint problem bcs
+    adjoint_dirichlet_bc_expr = dl.Constant(0.0)
+    adjoint_dirichlet_bc = dl.DirichletBC(self.solution_function_space,
+                                          adjoint_dirichlet_bc_expr,
+                                          u_boundary) 
     # Forcing term
     self.f = dl.Constant(10)
     
@@ -53,6 +59,7 @@ class Wolfgang(Benchmarks):
         parameter_function_space=self.parameter_function_space,
         solution_function_space=self.solution_function_space,
         dirichlet_bcs=dirichlet_bc,
+         adjoint_dirichlet_bcs=adjoint_dirichlet_bc,
         observation_operator=self.observation)
     
     # Define CUQI geometry 
@@ -70,7 +77,6 @@ class Wolfgang(Benchmarks):
 
 
     # prior distribution
-
     mean = 0
     std = 2
     a = Lognormal(np.zeros(64), std**2, geometry=self.domain_geometry)
