@@ -2,10 +2,10 @@ import dolfin as dl
 import numpy as np
 from cuqi.geometry import _WrappedGeometry
 # import cuqipy_fenics 
-from .Expression import Expression
+from .Expression2D import Expression2D
 
 
-class StepExpansion(_WrappedGeometry):
+class StepExpansion2D(_WrappedGeometry):
     """A geometry class that builds spectral representation of step expansion
     Parameters
     -----------
@@ -131,7 +131,7 @@ class StepExpansion(_WrappedGeometry):
         self._step_vec = np.zeros( [ u.vector().get_local().shape[0], self.num_steps ] )
         val = int(np.sqrt(self.num_steps))
         for i in range( self.num_steps ):   
-            u.interpolate(Expression(degree=0, x_lim=[(i%val) /val , (i%val + 1) / val], y_lim=[i//val /val , (i//val + 1) / val]))
+            u.interpolate(Expression2D(degree=0, x_lim=[(i%val) /val , (i%val + 1) / val], y_lim=[i//val /val , (i//val + 1) / val]))
             self._step_vec[:,i] = u.vector().get_local()
 
         
